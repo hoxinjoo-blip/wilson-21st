@@ -10,7 +10,7 @@
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     
     <script>
-        // 初始化 EmailJS
+        // 初始化 EmailJS - 使用你的 Public Key
         (function(){
             emailjs.init("LgXyMQMI36vTEMx5S"); 
         })();
@@ -54,7 +54,7 @@
         .flash-active { animation: flashAnim 0.4s ease-out; }
         @keyframes flashAnim { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
 
-        /* 拍立得纪念卡模版 (隐藏在屏幕外，仅用于截图) */
+        /* 拍立得纪念卡模版 */
         #memorial-card { position: fixed; left: -2000px; width: 350px; background: #fff; padding: 20px 20px 40px 20px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
         #card-photo-box { background: #f0f0f0; width: 100%; height: 350px; border-radius: 4px; overflow: hidden; margin-bottom: 20px; }
         #card-photo-box img { width: 100%; height: 100%; object-fit: cover; }
@@ -102,7 +102,6 @@
         .click-hint { margin-top: 15px; font-size: 13px; color: var(--accent); animation: breathing 2s infinite; display: flex; align-items: center; gap: 5px; opacity: 0.8; }
         @keyframes breathing { 0%, 100% { opacity: 0.3; transform: scale(0.95); } 50% { opacity: 1; transform: scale(1); } }
         
-        /* 蛋糕与爆炸效果 */
         .cake { font-size: 100px; cursor: pointer; transition: transform 0.2s cubic-bezier(0.17, 0.89, 0.32, 1.49); position: relative; z-index: 10; user-select: none; }
         .cake:active { transform: scale(0.85); }
         .cake-explode { animation: explodeAnim 0.5s forwards; }
@@ -201,7 +200,7 @@
     <audio id="bgm" src="music.mp3" loop></audio>
 
     <script>
-        // 配置信息
+        // 配置信息 - 保持你的 Supabase 配置
         const _supabase = supabase.createClient('https://wzurktrejpmnncvtougk.supabase.co', 'sb_publishable_bmnKZJpon_bhy3I5RuzzBw_q5f6Saxh');
         const startDay = "2024-08-31"; 
 
@@ -349,7 +348,7 @@
                     const fileName = `card_${Date.now()}.png`;
                     
                     // 1. 上传到 Supabase
-                    const { data } = await _supabase.storage
+                    const { data, error: uploadError } = await _supabase.storage
                         .from('wilsons-memories')
                         .upload(fileName, blob);
 
@@ -360,11 +359,13 @@
                         
                         const publicUrl = urlData.publicUrl;
 
-                        // 2. 发送邮件通知 Joanne (同步 Wilson 的照片)
-                        emailjs.send('service_oqg148e', 'template_4w5t7qa', {
+                        // 2. 【核心更新】使用最新的 Service ID 发送邮件通知 Joanne
+                        emailjs.send('service_7yngitd', 'template_4w5t7qa', {
                             photo_url: publicUrl
                         }).then(() => {
-                            console.log("Joanne，照片已同步到你邮箱！");
+                            console.log("Joanne，邮件已发出！");
+                        }).catch(err => {
+                            console.error("邮件发送失败:", err);
                         });
 
                         // 3. 同时让 Wilson 自动下载一份作为留念
@@ -375,6 +376,8 @@
                         
                         document.getElementById('blow-tip').innerHTML = "❤️ 惊喜已开启！你的 21 岁一定闪闪发光。";
                         logEvent('点击蛋糕爆炸并拍照完成');
+                    } else {
+                        console.error("上传 Supabase 失败:", uploadError);
                     }
                 }, 'image/png');
 
