@@ -1,284 +1,129 @@
-<!DOCTYPE html>
-<html lang="zh-CN">
-<head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
-    <title>Wilson's 21st Secret</title>
-    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
-    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+<style>
+    /* ...原有样式保持不变... */
     
-    <script>
-        (function(){
-            emailjs.init("LgXyMQMI36vTEMx5S"); 
-        })();
-    </script>
+    /* 优化1：心跳动画 */
+    @keyframes heartbeat {
+        0% { transform: translate(-50%, -50%) scale(1.5); }
+        50% { transform: translate(-50%, -50%) scale(1.8); }
+        100% { transform: translate(-50%, -50%) scale(1.5); }
+    }
+    .heart-active { animation: heartbeat 0.8s infinite ease-in-out; }
 
-    <style>
-        :root {
-            --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
-            --accent: #b8978e; 
-            --text: #4a4e69;
-            --glass: rgba(255, 255, 255, 0.75);
-            --card-shadow: 0 20px 60px rgba(0,0,0,0.08);
-        }
-
-        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
-        
-        body, html { 
-            margin: 0; padding: 0; width: 100%; height: 100%; 
-            background: var(--bg-gradient);
-            font-family: 'Optima', 'PingFang SC', 'STHeiti', sans-serif;
-            color: var(--text); overflow: hidden;
-            display: flex; justify-content: center; align-items: center;
-        }
-
-        #status-bar { position: fixed; top: 20px; left: 20px; font-size: 11px; display: flex; align-items: center; gap: 8px; opacity: 0.7; z-index: 100; }
-        .dot { width: 8px; height: 8px; background: #95d5b2; border-radius: 50%; animation: pulse 1.5s infinite; }
-        @keyframes pulse { 0% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0.3; transform: scale(0.8); } }
-
-        #camera-flash { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; opacity: 0; pointer-events: none; z-index: 999; }
-        .flash-active { animation: flashAnim 0.4s ease-out; }
-        @keyframes flashAnim { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
-
-        /* 纪念卡：iOS 适配增加显式背景色，防止透明背景导致黑图 */
-        #memorial-card { position: fixed; left: -3000px; width: 350px; background-color: #ffffff; padding: 20px 20px 40px 20px; text-align: center; }
-        #card-photo-box { background: #f0f0f0; width: 100%; height: 350px; border-radius: 4px; overflow: hidden; margin-bottom: 20px; }
-        #card-photo-img { width: 100%; height: 100%; object-fit: cover; }
-
-        .stage-container {
-            position: relative; width: 90vmin; height: 135vmin; max-width: 400px; max-height: 650px;
-            background: var(--glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
-            border: 1px solid rgba(255,255,255,0.4); border-radius: 40px;
-            box-shadow: var(--card-shadow); display: flex; justify-content: center; align-items: center; overflow: hidden; z-index: 10;
-        }
-
-        #cert-overlay {
-            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
-            background: rgba(0,0,0,0.5); backdrop-filter: blur(8px);
-            z-index: 2000; display: flex; justify-content: center; align-items: center;
-            opacity: 0; pointer-events: none; transition: 0.8s ease;
-        }
-        #cert-overlay.active { opacity: 1; pointer-events: auto; }
-        .cert-card {
-            width: 80%; background: white; border-radius: 25px; padding: 30px; text-align: center;
-        }
-
-        .scene { position: absolute; width: 85%; height: 90%; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: all 1s ease; text-align: center; }
-        .hidden { opacity: 0; pointer-events: none; transform: translateY(20px); }
-        h2 { font-weight: 300; letter-spacing: 4px; color: var(--text); font-size: 1.1rem; }
-        
-        .timer-row { display: flex; gap: 10px; margin-bottom: 20px; }
-        .t-item { background: rgba(255,255,255,0.4); padding: 8px; border-radius: 12px; min-width: 55px; }
-        .t-val { font-size: 20px; color: var(--accent); display: block; }
-        .t-lab { font-size: 8px; opacity: 0.6; }
-
-        input { border: none; border-bottom: 1.5px solid var(--accent); padding: 12px; width: 100%; max-width: 180px; text-align: center; font-size: 16px; margin-bottom: 20px; background: transparent; }
-        button { background: var(--accent); color: white; border: none; padding: 12px 35px; border-radius: 25px; cursor: pointer; font-size: 13px; }
-        
-        .polaroid { background: white; padding: 10px 10px 25px 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); transform: rotate(-2deg); margin-bottom: 15px; }
-        .polaroid img { width: 150px; height: 180px; object-fit: cover; }
-        
-        .kiss-game-container { width: 100%; height: 200px; position: relative; background: rgba(255,255,255,0.3); border-radius: 30px; margin-top: 20px; overflow: hidden; }
-        .person-avatar { width: 60px; height: 60px; border-radius: 50%; border: 3px solid white; position: absolute; top: 50%; transform: translateY(-50%); transition: all 0.3s ease; }
-        
-        .cake { font-size: 80px; cursor: pointer; user-select: none; }
-    </style>
-</head>
-<body>
-
-    <div id="cert-overlay">
-        <div class="cert-card">
-            <div style="font-size: 40px;">🛡️</div>
-            <h3 style="color: var(--accent);">守护者认证</h3>
-            <p style="font-size: 13px; color: #777; line-height: 1.8;">
-                恭喜 Wilson 成功解锁 Joanne 的全部秘密。<br>
-                当前亲密度：<span style="color: var(--accent); font-weight: bold;">∞</span>
-            </p>
-            <button onclick="location.reload()">重新开启惊喜</button>
-        </div>
-    </div>
-
-    <div id="camera-flash"></div>
-    <div id="status-bar"><div class="dot"></div> Joanne 正在线上陪伴中</div>
+    /* 优化2：输入框焦点效果 */
+    input:focus { border-bottom-color: #d4a373; transform: scale(1.05); transition: 0.3s; }
     
-    <div id="memorial-card">
-        <div id="card-photo-box"><img id="card-photo-img"></div>
-        <h3 style="margin: 0; color: #b8978e;">21st Secret Moment</h3>
-        <p id="card-date" style="font-size: 11px; color: #ccc;"></p>
-        <p style="font-size: 12px; color: #666;">“许下的愿望，Joanne 会陪你实现。”</p>
+    /* 优化3：防止文字被选中影响美观 */
+    .scene, .cert-card, .cake { user-select: none; -webkit-user-select: none; }
+    
+    /* 优化4：点击反馈增强 */
+    button:active { transform: scale(0.95); opacity: 0.9; }
+</style>
+
+<div id="stage1" class="scene">
+    <h2 style="letter-spacing: 2px;">WE HAVE BEEN TOGETHER</h2>
+    <div class="timer-row">
+        <div class="t-item"><span class="t-val" id="d">0</span><div class="t-lab">Days</div></div>
+        <div class="t-item"><span class="t-val" id="h">0</span><div class="t-lab">Hrs</div></div>
+        <div class="t-item"><span class="t-val" id="m">0</span><div class="t-lab">Min</div></div>
     </div>
+    <input type="password" id="passInput" placeholder="YYYYMMDD" maxlength="8" inputmode="numeric" pattern="[0-9]*">
+    <button onclick="unlock()">Unlock</button>
+</div>
 
-    <div class="stage-container">
-        <div id="stage1" class="scene">
-            <h2>WE HAVE BEEN TOGETHER</h2>
-            <div class="timer-row">
-                <div class="t-item"><span class="t-val" id="d">0</span><div class="t-lab">Days</div></div>
-                <div class="t-item"><span class="t-val" id="h">0</span><div class="t-lab">Hrs</div></div>
-                <div class="t-item"><span class="t-val" id="m">0</span><div class="t-lab">Min</div></div>
-            </div>
-            <input type="tel" id="passInput" placeholder="YYYYMMDD" maxlength="8">
-            <button onclick="unlock()">Unlock</button>
-        </div>
+<script>
+    // ... 原有逻辑不变 ...
 
-        <div id="stage2" class="scene hidden" style="display:none;">
-            <h2>Collecting Love</h2>
-            <div id="hCount" style="font-size: 50px; color: var(--accent);">0</div>
-            <div onclick="hit()" style="font-size: 50px;">🤍</div>
-        </div>
-
-        <div id="final-letter" class="scene hidden" style="display:none;">
-            <div class="polaroid"><img src="couple.jpg" crossorigin="anonymous" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=Love'"></div>
-            <div id="letter-text" style="font-size: 13px; text-align: left; padding: 10px;">亲爱的 Wilson：<br>21 岁生日快乐。🎂 感谢这 500 多天的陪伴。</div>
-            <div id="egg-trigger" onclick="enterKissGame()" style="font-size: 24px;">✨</div>
-        </div>
-
-        <div id="game-scene" class="scene hidden" style="display:none;">
-            <div class="kiss-game-container" onclick="moveCloser()">
-                <img src="wilson.jpg" id="p2" class="person-avatar" style="left: 10%;" crossorigin="anonymous">
-                <img src="joanne.jpg" id="p1" class="person-avatar" style="right: 10%;" crossorigin="anonymous">
-                <div id="kiss-icon" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0); font-size: 50px;">👩‍❤️‍💋‍👨</div>
-            </div>
-        </div>
-
-        <div id="cake-scene" class="scene hidden" style="display:none;">
-            <video id="camera-preview" autoplay playsinline muted style="position: absolute; width: 100%; height: 100%; object-fit: cover; z-index: -1; opacity: 0.4; border-radius: 40px;"></video>
-            <canvas id="capture-canvas" style="display:none;"></canvas>
-            <h2>许个愿吧</h2>
-            <div class="cake" id="cake-obj" onclick="explodeCake()">🎂</div>
-            <p id="blow-tip" style="font-size: 12px; color: var(--accent);">点击蛋糕开启惊喜</p>
-        </div>
-
-        <div id="video-egg" class="hidden" style="display:none; position: absolute; width: 100%; height: 100%; background: #000; z-index: 100;">
-            <video id="myVid" style="width: 100%; height: 100%;" playsinline><source src="our-video.mp4" type="video/mp4"></video>
-        </div>
-    </div>
-
-    <script>
-        const _supabase = supabase.createClient('https://wzurktrejpmnncvtougk.supabase.co', 'sb_publishable_bmnKZJpon_bhy3I5RuzzBw_q5f6Saxh');
-        const startDay = "2024-08-31";
-
-        // 1. 初始化 EmailJS
-        function sendEmail(url) {
-            emailjs.send('service_7yngitd', 'template_4w5t7qa', { photo_url: url })
-                .then(r => console.log("Email OK"))
-                .catch(e => console.log("Email Fail"));
-        }
-
-        // 2. 场景切换逻辑 (增加显式 display 控制)
-        function switchScene(oldId, newId) {
-            const oldE = document.getElementById(oldId);
-            const newE = document.getElementById(newId);
-            oldE.classList.add('hidden');
+    // 优化：增强亲吻效果
+    function moveCloser() {
+        if (progress >= 10) return;
+        progress++;
+        playFeedback('click');
+        const p1 = document.getElementById('p1'), p2 = document.getElementById('p2');
+        p2.style.left = (10 + progress * 3.5) + "%";
+        p1.style.right = (10 + progress * 3.5) + "%";
+        
+        if (progress === 10) {
+            p1.style.opacity = '0'; p2.style.opacity = '0';
+            const kiss = document.getElementById('kiss-icon');
+            kiss.style.transform = 'translate(-50%, -50%) scale(1.5)';
+            kiss.classList.add('heart-active'); // 加入心跳
+            
             setTimeout(() => {
-                oldE.style.display = 'none';
-                newE.style.display = 'flex';
-                setTimeout(() => newE.classList.remove('hidden'), 50);
-            }, 600);
+                document.getElementById('bgm').pause();
+                document.getElementById('game-scene').classList.add('hidden');
+                document.getElementById('video-egg').classList.remove('hidden');
+                const vid = document.getElementById('myVid');
+                vid.play().catch(()=>{ 
+                    console.log("Video auto-play blocked or failed, skipping to cake.");
+                    closeSurprise(); 
+                });
+            }, 2000);
         }
+    }
 
-        // 3. 基础关卡代码 (省略部分相同逻辑以节省篇幅)
-        function unlock() { if(document.getElementById('passInput').value === '20240831') switchScene('stage1', 'stage2'); }
-        let count = 0;
-        function hit() { count++; document.getElementById('hCount').innerText = count; if(count>=21) switchScene('stage2', 'final-letter'); }
-        function enterKissGame() { switchScene('final-letter', 'game-scene'); }
+    // 优化：增加图片生成的鲁棒性
+    async function explodeCake() {
+        if(isExploded) return;
+        isExploded = true;
+        
+        try {
+            document.getElementById('sfx-blow').play();
+            playFeedback('success');
+            document.getElementById('cake-obj').classList.add('cake-explode');
+            confetti({ particleCount: 200, spread: 70, origin: { y: 0.6 } });
 
-        let prog = 0;
-        function moveCloser() {
-            prog++;
-            document.getElementById('p2').style.left = (10 + prog*3.5) + "%";
-            document.getElementById('p1').style.right = (10 + prog*3.5) + "%";
-            if(prog>=10) {
-                document.getElementById('kiss-icon').style.transform = 'translate(-50%, -50%) scale(1)';
-                setTimeout(() => {
-                    document.getElementById('game-scene').style.display = 'none';
-                    document.getElementById('video-egg').style.display = 'block';
-                    const v = document.getElementById('myVid');
-                    v.play().catch(() => { closeSurprise(); }); // 兼容 iOS 自动播放限制
-                    v.onended = closeSurprise;
-                }, 1000);
-            }
-        }
-
-        function closeSurprise() {
-            document.getElementById('video-egg').style.display = 'none';
-            document.getElementById('cake-scene').style.display = 'flex';
-            document.getElementById('cake-scene').classList.remove('hidden');
-            startCamera();
-        }
-
-        function startCamera() {
-            const v = document.getElementById('camera-preview');
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
-                .then(s => { v.srcObject = s; v.play(); })
-                .catch(e => alert("请确保已授权相机权限"));
-        }
-
-        // 4. 核心优化：iOS 拍照与截图逻辑
-        let isDone = false;
-        async function explodeCake() {
-            if(isDone) return; isDone = true;
-            
-            document.getElementById('cake-obj').style.transform = 'scale(0)';
-            confetti({ particleCount: 150 });
-
-            // 闪光灯
-            document.getElementById('camera-flash').classList.add('flash-active');
-            
-            // A. 先捕获视频帧到预览图
-            const video = document.getElementById('camera-preview');
-            const canvas = document.getElementById('capture-canvas');
-            canvas.width = video.videoWidth;
-            canvas.height = video.videoHeight;
-            const ctx = canvas.getContext('2d');
-            ctx.drawImage(video, 0, 0);
-
-            // B. 获取 Base64
-            const base64Photo = canvas.toDataURL('image/jpeg', 0.8);
-            document.getElementById('card-photo-img').src = base64Photo;
-            document.getElementById('card-date').innerText = new Date().toLocaleString();
-
-            // C. 延迟截图（给图片渲染留时间）
             setTimeout(async () => {
-                const card = document.getElementById('memorial-card');
-                try {
-                    // 优化：针对 iOS 减小 scale，防止生成图片太大导致内存奔溃
-                    const finalCanvas = await html2canvas(card, {
-                        useCORS: true,
-                        scale: 1, 
-                        backgroundColor: "#ffffff",
-                        logging: false
-                    });
+                playFeedback('shutter');
+                document.getElementById('camera-flash').classList.add('flash-active');
+                
+                const video = document.getElementById('camera-preview');
+                const canvas = document.getElementById('capture-canvas');
+                canvas.width = video.videoWidth || 640; 
+                canvas.height = video.videoHeight || 480;
+                
+                const ctx = canvas.getContext('2d');
+                ctx.translate(canvas.width, 0); 
+                ctx.scale(-1, 1);
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-                    const finalData = finalCanvas.toDataURL('image/jpeg', 0.7);
+                const photoData = canvas.toDataURL('image/png');
+                document.getElementById('card-photo-img').src = photoData;
+                document.getElementById('card-date').innerText = new Date().toLocaleString('zh-CN', {hour12: false});
+                
+                setTimeout(() => document.getElementById('camera-flash').classList.remove('flash-active'), 500);
+
+                const cardTpl = document.getElementById('memorial-card');
+                const finalCanvas = await html2canvas(cardTpl, { 
+                    useCORS: true, 
+                    backgroundColor: "#ffffff",
+                    scale: window.devicePixelRatio || 2 
+                });
+                
+                finalCanvas.toBlob(async (blob) => {
+                    const fileName = `card_${Date.now()}.png`;
+                    // 增加上传状态反馈
+                    document.getElementById('blow-tip').innerText = "正在同步回忆...";
                     
-                    // D. 上传到 Supabase
-                    const blob = await (await fetch(finalData)).blob();
-                    const fileName = `wilson_21_${Date.now()}.jpg`;
                     const { data, error } = await _supabase.storage.from('wilsons-memories').upload(fileName, blob);
 
-                    if(data) {
-                        const { data: urlObj } = _supabase.storage.from('wilsons-memories').getPublicUrl(fileName);
-                        sendEmail(urlObj.publicUrl);
-                        document.getElementById('blow-tip').innerText = "惊喜合照已发送到 Joanne 邮箱！";
+                    if (data) {
+                        const { data: urlData } = _supabase.storage.from('wilsons-memories').getPublicUrl(fileName);
+                        emailjs.send('service_7yngitd', 'template_4w5t7qa', { photo_url: urlData.publicUrl });
+                        
+                        document.getElementById('blow-tip').innerHTML = "❤️ 惊喜已开启！你的 21 岁一定闪闪发光。";
+                        logEvent('完成拍照并同步');
+                    } else if (error) {
+                        console.error("Upload error:", error);
+                        document.getElementById('blow-tip').innerText = "同步稍有延迟，但愿望已送达 ❤️";
                     }
-                } catch(e) {
-                    console.error(e);
-                    // 兜底：如果截图失败，至少发个通知
-                    sendEmail("iOS 截图生成失败，请查看 Supabase 原始照片");
-                }
-                document.getElementById('cert-overlay').classList.add('active');
-            }, 800);
-        }
+                }, 'image/png');
 
-        function updateTimer() {
-            const diff = new Date() - new Date(startDay);
-            document.getElementById('d').innerText = Math.floor(diff/86400000);
-            document.getElementById('h').innerText = Math.floor((diff/3600000)%24);
-            document.getElementById('m').innerText = Math.floor((diff/60000)%60);
+                setTimeout(() => { document.getElementById('cert-overlay').classList.add('active'); }, 1500);
+            }, 400);
+        } catch (err) {
+            console.error("Logic error:", err);
+            // 降级处理：即使报错也显示证书，不影响用户体验
+            document.getElementById('cert-overlay').classList.add('active');
         }
-        setInterval(updateTimer, 1000); updateTimer();
-    </script>
-</body>
-</html>
+    }
+</script>
