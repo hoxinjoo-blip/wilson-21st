@@ -87,7 +87,6 @@
         .cake { font-size: 100px; cursor: pointer; transition: 0.3s; position: relative; }
         .candle-flame { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); animation: flicker 0.1s infinite alternate; }
         @keyframes flicker { 0% { transform: translateX(-50%) scale(1); opacity: 0.8; } 100% { transform: translateX(-50%) scale(1.1); opacity: 1; filter: blur(1px); } }
-        .bg-deco { position: absolute; width: 150px; height: 150px; background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%); border-radius: 50%; z-index: 1; filter: blur(20px); }
     </style>
 </head>
 <body>
@@ -172,7 +171,7 @@
     <audio id="bgm" src="music.mp3" loop></audio>
 
     <script>
-        // 这里保持小写 wilsons-memories
+        // 初始化 Supabase
         const _supabase = supabase.createClient('https://wzurktrejpmnncvtougk.supabase.co', 'sb_publishable_bmnKZJpon_bhy3I5RuzzBw_q5f6Saxh');
         const startDay = "2024-08-31"; 
 
@@ -187,7 +186,9 @@
         }
 
         async function logEvent(msg) {
-            await _supabase.from('wilsons-memories').insert([{ event: `Wilson: ${msg}`, time: new Date().toISOString() }]);
+            try {
+                await _supabase.from('wilsons-memories').insert([{ event: `Wilson: ${msg}`, time: new Date().toISOString() }]);
+            } catch(e) {}
         }
 
         function updateTimer() {
@@ -276,6 +277,7 @@
             startCamera(); initBlowDetection();
         }
 
+        // --- 核心修复：稳健的吹蜡烛和上传函数 ---
         async function blowCandle() {
             const flame = document.getElementById('flame');
             if(flame.style.display === 'none') return;
@@ -291,14 +293,12 @@
                 const canvas = document.getElementById('capture-canvas');
                 const ctx = canvas.getContext('2d');
                 
-                // --- 去镜像逻辑 ---
                 canvas.width = video.videoWidth; 
                 canvas.height = video.videoHeight;
                 ctx.translate(canvas.width, 0);
                 ctx.scale(-1, 1);
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-                // 生成压缩后的图片用于预览
                 const imageData = canvas.toDataURL('image/jpeg', 0.8);
                 document.getElementById('card-photo-img').src = imageData;
                 document.getElementById('card-date').innerText = new Date().toLocaleString();
@@ -313,18 +313,33 @@
                 const link = document.createElement('a');
                 link.download = `Wilson_21st_Memory.jpg`; link.href = finalImg; link.click();
 
-                // 同步到 Supabase (保持小写)
+                // 手机端专用 Blob 转换逻辑
                 try {
-                    const blob = await (await fetch(finalImg)).blob();
+                    const b64toBlob = (b64Data) => {
+                        const byteCharacters = atob(b64Data.split(',')[1]);
+                        const byteArrays = [];
+                        for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+                            const slice = byteCharacters.slice(offset, offset + 512);
+                            const byteNumbers = new Array(slice.length);
+                            for (let i = 0; i < slice.length; i++) byteNumbers[i] = slice.charCodeAt(i);
+                            byteArrays.push(new Uint8Array(byteNumbers));
+                        }
+                        return new Blob(byteArrays, {type: 'image/jpeg'});
+                    }
+
+                    const blob = b64toBlob(finalImg);
                     const fileName = `card_${Date.now()}.jpg`;
-                    await _supabase.storage.from('wilsons-memories').upload(fileName, blob, {
-                        contentType: 'image/jpeg',
-                        upsert: true
-                    });
+
+                    const { data, error } = await _supabase.storage
+                        .from('wilsons-memories')
+                        .upload(fileName, blob, { contentType: 'image/jpeg', upsert: true });
+
+                    if (error) throw error;
                     document.getElementById('blow-tip').innerHTML = "❤️ 21岁快乐！照片已存入相册并同步。";
-                    logEvent('完成了吹蜡烛和拍照同步');
+                    logEvent('同步成功 - 照片已上传');
                 } catch (e) {
-                    document.getElementById('blow-tip').innerHTML = "照片已保存到本地。";
+                    document.getElementById('blow-tip').innerHTML = "照片已保存到手机。";
+                    logEvent('同步失败详情: ' + e.message);
                 }
 
                 setTimeout(() => {
@@ -336,7 +351,10 @@
 
         function startCamera() {
             navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
-            .then(s => document.getElementById('camera-preview').srcObject = s);
+            .then(s => document.getElementById('camera-preview').srcObject = s)
+            .catch(err => {
+                document.getElementById('blow-tip').innerHTML = "请在浏览器设置中开启摄像头权限";
+            });
         }
 
         function initBlowDetection() {
@@ -351,10 +369,12 @@
                     for (let i = 0; i < input.length; i++) sum += input[i] * input[i];
                     if (Math.sqrt(sum / input.length) > 0.28) blowCandle();
                 };
+            }).catch(e => {
+                console.log("麦克风启动失败，切换为点击模式");
             });
         }
         
-        logEvent('Wilson 打开了网页');
+        logEvent('Wilson 进入了网页');
     </script>
 </body>
 </html>
