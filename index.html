@@ -10,7 +10,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
     
     <script>
-        // 初始化 EmailJS - 使用你的 Public Key
         (function(){
             emailjs.init("LgXyMQMI36vTEMx5S"); 
         })();
@@ -35,7 +34,6 @@
             display: flex; justify-content: center; align-items: center;
         }
 
-        /* 动态星光背景 */
         body::after {
             content: "";
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -54,10 +52,9 @@
         .flash-active { animation: flashAnim 0.4s ease-out; }
         @keyframes flashAnim { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
 
-        /* 拍立得纪念卡模版 */
         #memorial-card { position: fixed; left: -2000px; width: 350px; background: #fff; padding: 20px 20px 40px 20px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
         #card-photo-box { background: #f0f0f0; width: 100%; height: 350px; border-radius: 4px; overflow: hidden; margin-bottom: 20px; }
-        #card-photo-box img { width: 100%; height: 100%; object-fit: cover; }
+        #card-photo-img { width: 100%; height: 100%; object-fit: cover; }
 
         .stage-container {
             position: relative; width: 90vmin; height: 135vmin; max-width: 400px; max-height: 650px;
@@ -99,11 +96,7 @@
         .kiss-game-container { width: 100%; height: 250px; position: relative; background: rgba(255,255,255,0.3); border-radius: 30px; margin-top: 20px; overflow: hidden; cursor: pointer; }
         .person-avatar { width: 70px; height: 70px; border-radius: 50%; border: 3px solid white; position: absolute; top: 50%; transform: translateY(-50%); transition: all 0.4s ease; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
         
-        .click-hint { margin-top: 15px; font-size: 13px; color: var(--accent); animation: breathing 2s infinite; display: flex; align-items: center; gap: 5px; opacity: 0.8; }
-        @keyframes breathing { 0%, 100% { opacity: 0.3; transform: scale(0.95); } 50% { opacity: 1; transform: scale(1); } }
-        
         .cake { font-size: 100px; cursor: pointer; transition: transform 0.2s cubic-bezier(0.17, 0.89, 0.32, 1.49); position: relative; z-index: 10; user-select: none; }
-        .cake:active { transform: scale(0.85); }
         .cake-explode { animation: explodeAnim 0.5s forwards; }
         @keyframes explodeAnim {
             0% { transform: scale(1); }
@@ -133,11 +126,9 @@
 
     <div id="camera-flash"></div>
     <div id="status-bar"><div class="dot"></div> Joanne 正在线上陪伴中</div>
-    <div class="bg-deco" style="top: -50px; left: -50px;"></div>
-    <div class="bg-deco" style="bottom: -50px; right: -50px;"></div>
-
+    
     <div id="memorial-card">
-        <div id="card-photo-box"><img id="card-photo-img"></div>
+        <div id="card-photo-box"><img id="card-photo-img" crossOrigin="anonymous"></div>
         <h3 style="margin: 0; font-family: serif; color: #b8978e;">21st Secret Moment</h3>
         <p id="card-date" style="font-size: 11px; color: #ccc; margin: 5px 0 15px 0;"></p>
         <p style="font-size: 13px; color: #666; font-style: italic;">“许下的愿望，Joanne 会陪你一起实现。”</p>
@@ -180,7 +171,7 @@
         </div>
 
         <div id="cake-scene" class="scene hidden">
-            <video id="camera-preview" autoplay playsinline muted style="position: absolute; width: 100%; height: 100%; object-fit: cover; z-index: -1; opacity: 0.3; border-radius: 40px;"></video>
+            <video id="camera-preview" autoplay playsinline muted crossOrigin="anonymous" style="position: absolute; width: 100%; height: 100%; object-fit: cover; z-index: -1; opacity: 0.3; border-radius: 40px;"></video>
             <canvas id="capture-canvas" style="display:none;"></canvas>
             <h2 id="cake-title">许个愿吧</h2>
             <div class="cake" id="cake-obj" onclick="explodeCake()">🎂<div id="flame" class="candle-flame">🔥</div></div>
@@ -200,17 +191,12 @@
     <audio id="bgm" src="music.mp3" loop></audio>
 
     <script>
-        // 配置信息 - 保持你的 Supabase 配置
         const _supabase = supabase.createClient('https://wzurktrejpmnncvtougk.supabase.co', 'sb_publishable_bmnKZJpon_bhy3I5RuzzBw_q5f6Saxh');
         const startDay = "2024-08-31"; 
 
         function playFeedback(type) {
-            if ("vibrate" in navigator) {
-                const pattern = type === 'success' ? [50, 30, 50] : 40;
-                navigator.vibrate(pattern);
-            }
-            const soundId = type === 'shutter' ? 'sfx-shutter' : (type === 'success' ? 'sfx-success' : 'sfx-click');
-            const sound = document.getElementById(soundId);
+            if ("vibrate" in navigator) navigator.vibrate(type === 'success' ? [50, 30, 50] : 40);
+            const sound = document.getElementById(type === 'shutter' ? 'sfx-shutter' : (type === 'success' ? 'sfx-success' : 'sfx-click'));
             if(sound) { sound.currentTime = 0; sound.play().catch(e=>{}); }
         }
 
@@ -260,16 +246,13 @@
             }, 800);
         }
 
-        let progress = 0;
         function enterKissGame() { switchScene('final-letter', 'game-scene'); logEvent('进入亲亲游戏'); }
 
+        let progress = 0;
         function moveCloser() {
-            const guide = document.getElementById('game-guide');
-            if(guide) guide.style.opacity = '0';
             if (progress >= 10) return;
             progress++;
             playFeedback('click');
-            createMiniHeart();
             const p1 = document.getElementById('p1'), p2 = document.getElementById('p2');
             p2.style.left = (10 + progress * 3.5) + "%";
             p1.style.right = (10 + progress * 3.5) + "%";
@@ -280,21 +263,9 @@
                     document.getElementById('bgm').pause();
                     document.getElementById('game-scene').classList.add('hidden');
                     document.getElementById('video-egg').classList.remove('hidden');
-                    document.getElementById('myVid').play();
+                    document.getElementById('myVid').play().catch(()=>{ closeSurprise(); });
                 }, 1500);
             }
-        }
-
-        function createMiniHeart() {
-            const heart = document.createElement('div');
-            heart.innerHTML = '❤️';
-            heart.style.cssText = `position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); pointer-events: none; transition: all 1s ease-out; z-index: 100; font-size: 24px;`;
-            document.querySelector('.kiss-game-container').appendChild(heart);
-            setTimeout(() => {
-                heart.style.top = '20%'; heart.style.left = (50 + (Math.random() - 0.5) * 40) + '%';
-                heart.style.opacity = '0'; heart.style.transform = 'translate(-50%, -50%) scale(1.5)';
-                setTimeout(() => heart.remove(), 1000);
-            }, 10);
         }
 
         function closeSurprise() {
@@ -304,23 +275,22 @@
             startCamera();
         }
 
+        function startCamera() {
+            const v = document.getElementById('camera-preview');
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+            .then(s => v.srcObject = s)
+            .catch(e => { document.getElementById('blow-tip').innerText = "请开启相机权限后再试"; });
+        }
+
         let isExploded = false;
         async function explodeCake() {
             if(isExploded) return;
             isExploded = true;
-            
             document.getElementById('sfx-blow').play();
             playFeedback('success');
-
-            const cake = document.getElementById('cake-obj');
-            cake.classList.add('cake-explode');
+            document.getElementById('cake-obj').classList.add('cake-explode');
             
-            confetti({
-                particleCount: 250,
-                spread: 120,
-                origin: { y: 0.6 },
-                colors: ['#b8978e', '#f5f7fa', '#c3cfe2', '#ff0000', '#ffffff']
-            });
+            confetti({ particleCount: 200, spread: 70, origin: { y: 0.6 } });
 
             setTimeout(async () => {
                 playFeedback('shutter');
@@ -329,74 +299,52 @@
                 const video = document.getElementById('camera-preview');
                 const canvas = document.getElementById('capture-canvas');
                 canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-                
                 const ctx = canvas.getContext('2d');
                 ctx.translate(canvas.width, 0); ctx.scale(-1, 1);
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-                const imageData = canvas.toDataURL('image/png');
-                document.getElementById('card-photo-img').src = imageData;
+                document.getElementById('card-photo-img').src = canvas.toDataURL('image/png');
                 document.getElementById('card-date').innerText = new Date().toLocaleString();
                 
                 setTimeout(() => document.getElementById('camera-flash').classList.remove('flash-active'), 500);
 
-                // --- 生成卡片并执行云端同步逻辑 ---
+                // --- 截图并上传 (修复 Canvas Taint) ---
                 const cardTpl = document.getElementById('memorial-card');
-                const finalCanvas = await html2canvas(cardTpl, { scale: 2 });
+                const finalCanvas = await html2canvas(cardTpl, { 
+                    useCORS: true, 
+                    allowTaint: false,
+                    scale: 2 
+                });
                 
                 finalCanvas.toBlob(async (blob) => {
                     const fileName = `card_${Date.now()}.png`;
-                    
-                    // 1. 上传到 Supabase
-                    const { data, error: uploadError } = await _supabase.storage
-                        .from('wilsons-memories')
-                        .upload(fileName, blob);
+                    const { data, error } = await _supabase.storage.from('wilsons-memories').upload(fileName, blob);
 
                     if (data) {
-                        const { data: urlData } = _supabase.storage
-                            .from('wilsons-memories')
-                            .getPublicUrl(fileName);
-                        
+                        const { data: urlData } = _supabase.storage.from('wilsons-memories').getPublicUrl(fileName);
                         const publicUrl = urlData.publicUrl;
 
-                        // 2. 【核心更新】使用最新的 Service ID 发送邮件通知 Joanne
-                        emailjs.send('service_7yngitd', 'template_4w5t7qa', {
-                            photo_url: publicUrl
-                        }).then(() => {
-                            console.log("Joanne，邮件已发出！");
-                        }).catch(err => {
-                            console.error("邮件发送失败:", err);
-                        });
+                        // 发送邮件使用最新 Service ID
+                        emailjs.send('service_7yngitd', 'template_4w5t7qa', { photo_url: publicUrl })
+                            .then(() => console.log("Email Sent!"))
+                            .catch(e => console.error("Email Error:", e));
 
-                        // 3. 同时让 Wilson 自动下载一份作为留念
+                        // 自动下载留念
                         const link = document.createElement('a');
                         link.download = `Wilson_21st_Memory.png`; 
                         link.href = finalCanvas.toDataURL("image/png"); 
                         link.click();
                         
                         document.getElementById('blow-tip').innerHTML = "❤️ 惊喜已开启！你的 21 岁一定闪闪发光。";
-                        logEvent('点击蛋糕爆炸并拍照完成');
-                    } else {
-                        console.error("上传 Supabase 失败:", uploadError);
+                        logEvent('完成拍照并同步');
                     }
                 }, 'image/png');
 
-                setTimeout(() => {
-                    document.getElementById('cert-overlay').classList.add('active');
-                }, 1500);
-
+                setTimeout(() => { document.getElementById('cert-overlay').classList.add('active'); }, 1500);
             }, 400);
         }
-
-        function startCamera() {
-            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
-            .then(s => document.getElementById('camera-preview').srcObject = s)
-            .catch(e => {
-                document.getElementById('blow-tip').innerText = "提示：请允许相机权限以捕捉惊喜瞬间";
-            });
-        }
         
-        logEvent('Wilson 打开了网页');
+        logEvent('Wilson 访问了秘密网页');
     </script>
 </body>
 </html>
