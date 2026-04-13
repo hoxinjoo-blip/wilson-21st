@@ -67,6 +67,7 @@
         }
         #cert-overlay.active { opacity: 1; pointer-events: auto; }
         .cert-card { width: 80%; background: white; border-radius: 25px; padding: 30px; text-align: center; transform: translateY(20px); transition: 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+        #cert-overlay.active .cert-card { transform: translateY(0); }
 
         .scene { position: absolute; width: 85%; height: 90%; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: all 1s cubic-bezier(0.4, 0, 0.2, 1); text-align: center; }
         .hidden { opacity: 0; pointer-events: none; transform: translateY(30px) scale(0.95); }
@@ -168,7 +169,9 @@
         const _supabase = supabase.createClient('https://wzurktrejpmnncvtougk.supabase.co', 'sb_publishable_bmnKZJpon_bhy3I5RuzzBw_q5f6Saxh');
         let detector;
         let isBlown = false;
+        const startDay = "2024-08-31";
 
+        // AI 视觉识别初始化
         async function initAI() {
             try {
                 const model = faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh;
@@ -177,29 +180,29 @@
                     solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh',
                     refineLandmarks: true
                 });
-                detectFace();
+                detectFaceLoop();
             } catch(e) { console.error("AI模型加载失败", e); }
         }
 
-        async function detectFace() {
+        async function detectFaceLoop() {
             if(isBlown) return;
             const video = document.getElementById('camera-preview');
-            if (video.readyState < 2) { requestAnimationFrame(detectFace); return; }
+            if (video.readyState < 2) { requestAnimationFrame(detectFaceLoop); return; }
 
             const faces = await detector.estimateFaces(video);
             if (faces.length > 0) {
                 const keypoints = faces[0].keypoints;
-                // 嘴唇关键点：61(左唇角), 291(右唇角)
+                // 嘴部宽度计算 (点 61 和 291 为唇角)
                 const leftLip = keypoints[61], rightLip = keypoints[291];
                 const mouthWidth = Math.sqrt(Math.pow(leftLip.x - rightLip.x, 2) + Math.pow(leftLip.y - rightLip.y, 2));
                 
-                // 这里的 48 是判定阈值，嘟嘴时嘴宽度会变窄
-                if (mouthWidth < 48) { triggerBlow(); }
+                // 48 是嘟嘴的判定阈值，可根据实测调整
+                if (mouthWidth < 48) { triggerBlowSequence(); }
             }
-            requestAnimationFrame(detectFace);
+            requestAnimationFrame(detectFaceLoop);
         }
 
-        async function triggerBlow() {
+        async function triggerBlowSequence() {
             isBlown = true;
             document.getElementById('sfx-blow').play();
             document.getElementById('flame').style.display = 'none';
@@ -209,7 +212,6 @@
                 document.getElementById('sfx-shutter').play();
                 document.getElementById('camera-flash').classList.add('flash-active');
                 
-                // 抓拍并上传
                 await captureAndUpload();
                 
                 setTimeout(() => {
@@ -225,34 +227,34 @@
             const canvas = document.getElementById('capture-canvas');
             const ctx = canvas.getContext('2d');
             canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+            // 处理镜像
             ctx.translate(canvas.width, 0); ctx.scale(-1, 1);
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            document.getElementById('card-photo-img').src = canvas.toDataURL('image/jpeg');
+            const photoBase64 = canvas.toDataURL('image/jpeg');
+            document.getElementById('card-photo-img').src = photoBase64;
             document.getElementById('card-date').innerText = new Date().toLocaleString();
 
-            const finalCanvas = await html2canvas(document.getElementById('memorial-card'));
+            const finalCanvas = await html2canvas(document.getElementById('memorial-card'), { useCORS: true });
             const finalImg = finalCanvas.toDataURL("image/jpeg", 0.7);
 
-            // Supabase 上传
-            const b64toBlob = (b64) => {
-                const byteCharacters = atob(b64.split(',')[1]);
-                const byteArrays = [];
-                for (let offset = 0; offset < byteCharacters.length; offset += 512) {
-                    const slice = byteCharacters.slice(offset, offset + 512);
-                    const byteNumbers = new Array(slice.length);
-                    for (let i = 0; i < slice.length; i++) byteNumbers[i] = slice.charCodeAt(i);
-                    byteArrays.push(new Uint8Array(byteNumbers));
-                }
-                return new Blob(byteArrays, {type: 'image/jpeg'});
-            };
-
+            // 上传 Supabase
             try {
-                await _supabase.storage.from('wilsons-memories').upload(`card_${Date.now()}.jpg`, b64toBlob(finalImg), { contentType: 'image/jpeg' });
-            } catch(e) {}
+                const blob = await (await fetch(finalImg)).blob();
+                await _supabase.storage.from('wilsons-memories').upload(`card_${Date.now()}.jpg`, blob);
+                logEvent('吹熄蜡烛并拍照存档');
+            } catch(e) { console.error(e); }
         }
 
-        // 基础逻辑
+        // 通用逻辑部分
+        function updateTimer() {
+            const diff = new Date() - new Date(startDay);
+            document.getElementById('d').innerText = Math.floor(diff/86400000);
+            document.getElementById('h').innerText = Math.floor((diff/3600000)%24);
+            document.getElementById('m').innerText = Math.floor((diff/60000)%60);
+        }
+        setInterval(updateTimer, 1000); updateTimer();
+
         function unlock() { if(document.getElementById('passInput').value === '20240831') switchScene('stage1', 'stage2'); }
         let count = 0;
         function hit() { count++; document.getElementById('hCount').innerText = count; if(count >= 21) switchScene('stage2', 'final-letter'); }
@@ -271,7 +273,7 @@
         }
         function closeSurprise() { 
             switchScene('video-egg', 'cake-scene'); 
-            navigator.mediaDevices.getUserMedia({ video: true }).then(s => {
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } }).then(s => {
                 document.getElementById('camera-preview').srcObject = s;
                 initAI(); 
             });
@@ -285,6 +287,7 @@
                 setTimeout(() => next.classList.remove('hidden'), 50);
             }, 800);
         }
+        async function logEvent(msg) { await _supabase.from('wilsons-memories').insert([{ event: `Wilson: ${msg}`, time: new Date().toISOString() }]); }
     </script>
 </body>
 </html>
