@@ -8,7 +8,6 @@
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
     
-    <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl"></script>
@@ -33,7 +32,14 @@
             display: flex; justify-content: center; align-items: center;
         }
 
-        /* 状态栏 */
+        body::after {
+            content: ""; position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.08) 1.5px, transparent 1.5px);
+            background-size: 35px 35px; z-index: 1; pointer-events: none;
+            animation: starMove 40s linear infinite;
+        }
+        @keyframes starMove { from { background-position: 0 0; } to { background-position: 100px 100px; } }
+
         #status-bar { position: fixed; top: 20px; left: 20px; font-size: 11px; display: flex; align-items: center; gap: 8px; opacity: 0.7; z-index: 100; }
         .dot { width: 8px; height: 8px; background: #95d5b2; border-radius: 50%; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0.3; transform: scale(0.8); } }
@@ -42,7 +48,6 @@
         .flash-active { animation: flashAnim 0.4s ease-out; }
         @keyframes flashAnim { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
 
-        /* 隐藏的拍照模版 */
         #memorial-card { position: fixed; left: -2000px; width: 350px; background: #fff; padding: 20px 20px 40px 20px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
         #card-photo-box { background: #f0f0f0; width: 100%; height: 350px; border-radius: 4px; overflow: hidden; margin-bottom: 20px; }
         #card-photo-box img { width: 100%; height: 100%; object-fit: cover; }
@@ -61,40 +66,43 @@
             opacity: 0; pointer-events: none; transition: 0.8s ease;
         }
         #cert-overlay.active { opacity: 1; pointer-events: auto; }
-        .cert-card {
-            width: 80%; background: white; border-radius: 25px; padding: 30px; text-align: center;
-            transform: translateY(20px); transition: 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
-        }
+        .cert-card { width: 80%; background: white; border-radius: 25px; padding: 30px; text-align: center; transform: translateY(20px); transition: 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
 
         .scene { position: absolute; width: 85%; height: 90%; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: all 1s cubic-bezier(0.4, 0, 0.2, 1); text-align: center; }
         .hidden { opacity: 0; pointer-events: none; transform: translateY(30px) scale(0.95); }
         
-        /* 蛋糕关卡样式 */
-        .cake { font-size: 100px; cursor: pointer; transition: 0.3s; position: relative; }
-        .candle-flame { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); animation: flicker 0.1s infinite alternate; }
-        @keyframes flicker { 0% { transform: translateX(-50%) scale(1); opacity: 0.8; } 100% { transform: translateX(-50%) scale(1.1); opacity: 1; filter: blur(1px); } }
-
+        h2 { font-weight: 300; letter-spacing: 4px; margin-bottom: 25px; color: var(--text); font-size: 1.2rem; }
+        .timer-row { display: flex; gap: 15px; margin-bottom: 30px; }
+        .t-item { background: rgba(255,255,255,0.4); padding: 10px; border-radius: 12px; min-width: 60px; }
+        .t-val { font-size: 24px; font-weight: 200; color: var(--accent); display: block; }
+        .t-lab { font-size: 9px; opacity: 0.6; text-transform: uppercase; margin-top: 4px; }
         input { border: none; border-bottom: 1.5px solid var(--accent); padding: 12px; width: 100%; max-width: 200px; text-align: center; font-size: 16px; margin-bottom: 30px; outline: none; background: transparent; color: var(--text); letter-spacing: 4px; }
         button { background: var(--accent); color: white; border: none; padding: 12px 40px; border-radius: 25px; cursor: pointer; font-size: 14px; letter-spacing: 2px; transition: 0.3s; box-shadow: 0 5px 15px rgba(184, 151, 142, 0.3); }
+        
+        .polaroid { background: white; padding: 10px 10px 30px 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); transform: rotate(-3deg); margin-bottom: 25px; }
+        .polaroid img { width: 160px; height: 200px; object-fit: cover; }
+        
+        .kiss-game-container { width: 100%; height: 250px; position: relative; background: rgba(255,255,255,0.3); border-radius: 30px; margin-top: 20px; overflow: hidden; }
+        .person-avatar { width: 70px; height: 70px; border-radius: 50%; border: 3px solid white; position: absolute; top: 50%; transform: translateY(-50%); transition: all 0.4s ease; }
+        
+        .cake { font-size: 100px; cursor: pointer; position: relative; }
+        .candle-flame { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); animation: flicker 0.1s infinite alternate; }
+        @keyframes flicker { 0% { transform: translateX(-50%) scale(1); opacity: 0.8; } 100% { transform: translateX(-50%) scale(1.1); opacity: 1; filter: blur(1px); } }
     </style>
 </head>
 <body>
 
-    <div id="camera-flash"></div>
-    <div id="status-bar"><div class="dot"></div> AI 视觉识别已就绪</div>
-
-    <div class="stage-container">
-        <div id="cake-scene" class="scene">
-            <video id="camera-preview" autoplay playsinline muted style="position: absolute; width: 100%; height: 100%; object-fit: cover; z-index: -1; opacity: 0.4; border-radius: 40px;"></video>
-            <canvas id="capture-canvas" style="display:none;"></canvas>
-            <h2 id="cake-title">AI 嘟嘴感应模式</h2>
-            <div class="cake" id="cake-obj">🎂<div id="flame" class="candle-flame">🔥</div></div>
-            <p id="blow-tip" style="font-size: 13px; color: var(--accent); margin-top: 30px; line-height: 1.6;">
-                请看着镜头，做出<b>嘟嘴/吹气</b>的动作<br>
-                <span style="font-size: 11px; opacity: 0.7;">AI 正在分析你的面部关键点...</span>
-            </p>
+    <div id="cert-overlay">
+        <div class="cert-card">
+            <div style="font-size: 40px; margin-bottom: 10px;">🛡️</div>
+            <h3 style="margin: 0; color: var(--accent); letter-spacing: 2px;">守护者认证</h3>
+            <p style="font-size: 13px; color: #777; line-height: 1.8; margin: 15px 0;">恭喜 Wilson 成功解锁 Joanne 的全部秘密。<br>你已获得 Joanne 的永久守护特权。❤️</p>
+            <button onclick="document.getElementById('cert-overlay').classList.remove('active')">确认接收</button>
         </div>
     </div>
+
+    <div id="camera-flash"></div>
+    <div id="status-bar"><div class="dot"></div> Joanne 正在线上陪伴中</div>
 
     <div id="memorial-card">
         <div id="card-photo-box"><img id="card-photo-img"></div>
@@ -103,104 +111,180 @@
         <p style="font-size: 13px; color: #666; font-style: italic;">“许下的愿望，Joanne 会陪你一起实现。”</p>
     </div>
 
+    <div class="stage-container">
+        <div id="stage1" class="scene">
+            <h2 style="letter-spacing: 2px;">WE HAVE BEEN TOGETHER</h2>
+            <div class="timer-row">
+                <div class="t-item"><span class="t-val" id="d">0</span><div class="t-lab">Days</div></div>
+                <div class="t-item"><span class="t-val" id="h">0</span><div class="t-lab">Hrs</div></div>
+                <div class="t-item"><span class="t-val" id="m">0</span><div class="t-lab">Min</div></div>
+            </div>
+            <input type="password" id="passInput" placeholder="YYYYMMDD" maxlength="8">
+            <button onclick="unlock()">Unlock</button>
+        </div>
+
+        <div id="stage2" class="scene hidden">
+            <h2>Collecting Love</h2>
+            <div id="hCount" style="font-size: 64px; font-weight: 100; margin: 20px; color: var(--accent);">0</div>
+            <div onclick="hit()" style="cursor:pointer; font-size: 50px;">🤍</div>
+        </div>
+
+        <div id="final-letter" class="scene hidden">
+            <div class="polaroid"><img src="couple.jpg" onerror="this.src='https://images.unsplash.com/photo-1518199266791-5375a83190b7?q=80&w=400'"></div>
+            <div id="letter-text" style="font-size: 14px; text-align: left;">亲爱的 Wilson：<br>21 岁生日快乐。🎂<br>从 2024 年 8 月 31 日至今，谢谢你总是坚定的陪在我身边。</div>
+            <div id="egg-trigger" onclick="enterKissGame()" style="margin-top: 15px; cursor: pointer;">✨</div>
+        </div>
+
+        <div id="game-scene" class="scene hidden">
+            <h2>CLOSER TO YOU</h2>
+            <div class="kiss-game-container" onclick="moveCloser()">
+                <img src="wilson.jpg" id="p2" class="person-avatar" style="left: 10%;" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=Wilson'">
+                <img src="joanne.jpg" id="p1" class="person-avatar" style="right: 10%;" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=Joanne'">
+                <div id="kiss-icon" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0); font-size: 60px;">👩‍❤️‍💋‍👨</div>
+            </div>
+        </div>
+
+        <div id="cake-scene" class="scene hidden">
+            <video id="camera-preview" autoplay playsinline muted style="position: absolute; width: 100%; height: 100%; object-fit: cover; z-index: -1; opacity: 0.3; border-radius: 40px;"></video>
+            <canvas id="capture-canvas" style="display:none;"></canvas>
+            <h2 id="cake-title">许个愿吧</h2>
+            <div class="cake" id="cake-obj">🎂<div id="flame" class="candle-flame">🔥</div></div>
+            <p id="blow-tip" style="font-size: 13px; color: var(--accent); margin-top: 30px;">AI 视觉识别中...<br>请对着镜头<b>嘟嘴吹气</b></p>
+        </div>
+
+        <div id="video-egg" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 100; display: flex; align-items: center; justify-content: center;">
+            <div style="position: absolute; top: 30px; right: 30px; color: white; cursor: pointer; font-size: 30px;" onclick="closeSurprise()">×</div>
+            <video id="myVid" style="width: 100%;" playsinline><source src="our-video.mp4" type="video/mp4"></video>
+        </div>
+    </div>
+
+    <audio id="sfx-click" src="click.mp3"></audio>
+    <audio id="sfx-success" src="success.mp3"></audio>
     <audio id="sfx-shutter" src="shutter.mp3"></audio>
     <audio id="sfx-blow" src="blow.mp3"></audio>
+    <audio id="bgm" src="music.mp3" loop></audio>
 
     <script>
-        const _supabase = supabase.createClient('你的URL', '你的Key');
+        const _supabase = supabase.createClient('https://wzurktrejpmnncvtougk.supabase.co', 'sb_publishable_bmnKZJpon_bhy3I5RuzzBw_q5f6Saxh');
         let detector;
-        let isBlowing = false;
+        let isBlown = false;
 
-        // 初始化 AI 模型
         async function initAI() {
-            const model = faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh;
-            const detectorConfig = {
-                runtime: 'mediapipe',
-                solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh',
-                refineLandmarks: true
-            };
-            detector = await faceLandmarksDetection.createDetector(model, detectorConfig);
-            detectFace();
+            try {
+                const model = faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh;
+                detector = await faceLandmarksDetection.createDetector(model, {
+                    runtime: 'mediapipe',
+                    solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh',
+                    refineLandmarks: true
+                });
+                detectFace();
+            } catch(e) { console.error("AI模型加载失败", e); }
         }
 
         async function detectFace() {
+            if(isBlown) return;
             const video = document.getElementById('camera-preview');
-            if (video.readyState < 2) {
-                requestAnimationFrame(detectFace);
-                return;
-            }
+            if (video.readyState < 2) { requestAnimationFrame(detectFace); return; }
 
             const faces = await detector.estimateFaces(video);
-
             if (faces.length > 0) {
                 const keypoints = faces[0].keypoints;
-                
-                // 核心逻辑：计算嘴唇的横向距离和纵向距离
-                // MediaPipe 关键点：61(左唇角), 291(右唇角), 0(上唇中心), 17(下唇中心)
+                // 嘴唇关键点：61(左唇角), 291(右唇角)
                 const leftLip = keypoints[61], rightLip = keypoints[291];
-                const topLip = keypoints[0], bottomLip = keypoints[17];
-
                 const mouthWidth = Math.sqrt(Math.pow(leftLip.x - rightLip.x, 2) + Math.pow(leftLip.y - rightLip.y, 2));
-                const mouthHeight = Math.sqrt(Math.pow(topLip.x - bottomLip.x, 2) + Math.pow(topLip.y - bottomLip.y, 2));
-
-                // 嘟嘴判断标准：嘴巴宽度变窄 且 高度有一定的张开度
-                // 这里的 45 和 0.6 是经验参数，可以根据实际微调
-                if (mouthWidth < 50 && !isBlowing) {
-                    triggerBlowEffect();
-                }
+                
+                // 这里的 48 是判定阈值，嘟嘴时嘴宽度会变窄
+                if (mouthWidth < 48) { triggerBlow(); }
             }
             requestAnimationFrame(detectFace);
         }
 
-        async function triggerBlowEffect() {
-            isBlowing = true;
-            const flame = document.getElementById('flame');
-            if(flame.style.display === 'none') return;
-
+        async function triggerBlow() {
+            isBlown = true;
             document.getElementById('sfx-blow').play();
-            flame.style.display = 'none';
-            document.getElementById('blow-tip').innerHTML = "✨ 捕捉到你的愿望了！";
+            document.getElementById('flame').style.display = 'none';
+            document.getElementById('blow-tip').innerHTML = "✨ 愿望已收到！正在抓拍...";
 
-            // 拍照逻辑
             setTimeout(async () => {
                 document.getElementById('sfx-shutter').play();
                 document.getElementById('camera-flash').classList.add('flash-active');
                 
-                // 执行拍照、生成模版、上传 Supabase 的逻辑（保持和你之前的代码一致）
+                // 抓拍并上传
                 await captureAndUpload();
                 
-                setTimeout(() => document.getElementById('camera-flash').classList.remove('flash-active'), 500);
-            }, 300);
+                setTimeout(() => {
+                    document.getElementById('camera-flash').classList.remove('flash-active');
+                    document.getElementById('cert-overlay').classList.add('active');
+                    confetti({ particleCount: 200, spread: 100 });
+                }, 500);
+            }, 600);
         }
 
         async function captureAndUpload() {
             const video = document.getElementById('camera-preview');
             const canvas = document.getElementById('capture-canvas');
             const ctx = canvas.getContext('2d');
-            
-            canvas.width = video.videoWidth; 
-            canvas.height = video.videoHeight;
+            canvas.width = video.videoWidth; canvas.height = video.videoHeight;
             ctx.translate(canvas.width, 0); ctx.scale(-1, 1);
             ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-            const imageData = canvas.toDataURL('image/jpeg', 0.8);
-            document.getElementById('card-photo-img').src = imageData;
+            document.getElementById('card-photo-img').src = canvas.toDataURL('image/jpeg');
             document.getElementById('card-date').innerText = new Date().toLocaleString();
 
-            const cardTpl = document.getElementById('memorial-card');
-            const finalCanvas = await html2canvas(cardTpl, { scale: 1, useCORS: true });
+            const finalCanvas = await html2canvas(document.getElementById('memorial-card'));
             const finalImg = finalCanvas.toDataURL("image/jpeg", 0.7);
 
-            // 此处省略你之前的 b64toBlob 和 Supabase 上传部分，逻辑完全一样
-            console.log("照片已捕获并准备上传...");
+            // Supabase 上传
+            const b64toBlob = (b64) => {
+                const byteCharacters = atob(b64.split(',')[1]);
+                const byteArrays = [];
+                for (let offset = 0; offset < byteCharacters.length; offset += 512) {
+                    const slice = byteCharacters.slice(offset, offset + 512);
+                    const byteNumbers = new Array(slice.length);
+                    for (let i = 0; i < slice.length; i++) byteNumbers[i] = slice.charCodeAt(i);
+                    byteArrays.push(new Uint8Array(byteNumbers));
+                }
+                return new Blob(byteArrays, {type: 'image/jpeg'});
+            };
+
+            try {
+                await _supabase.storage.from('wilsons-memories').upload(`card_${Date.now()}.jpg`, b64toBlob(finalImg), { contentType: 'image/jpeg' });
+            } catch(e) {}
         }
 
-        // 启动流程
-        navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
-        .then(s => {
-            document.getElementById('camera-preview').srcObject = s;
-            initAI();
-        });
+        // 基础逻辑
+        function unlock() { if(document.getElementById('passInput').value === '20240831') switchScene('stage1', 'stage2'); }
+        let count = 0;
+        function hit() { count++; document.getElementById('hCount').innerText = count; if(count >= 21) switchScene('stage2', 'final-letter'); }
+        function enterKissGame() { switchScene('final-letter', 'game-scene'); }
+        let progress = 0;
+        function moveCloser() {
+            progress++;
+            document.getElementById('p2').style.left = (10 + progress * 3.5) + "%";
+            document.getElementById('p1').style.right = (10 + progress * 3.5) + "%";
+            if (progress === 10) {
+                setTimeout(() => {
+                    switchScene('game-scene', 'video-egg');
+                    document.getElementById('myVid').play();
+                }, 1000);
+            }
+        }
+        function closeSurprise() { 
+            switchScene('video-egg', 'cake-scene'); 
+            navigator.mediaDevices.getUserMedia({ video: true }).then(s => {
+                document.getElementById('camera-preview').srcObject = s;
+                initAI(); 
+            });
+        }
+        function switchScene(oldId, newId) {
+            document.getElementById(oldId).classList.add('hidden');
+            setTimeout(() => {
+                document.getElementById(oldId).style.display = 'none';
+                const next = document.getElementById(newId);
+                next.style.display = 'flex';
+                setTimeout(() => next.classList.remove('hidden'), 50);
+            }, 800);
+        }
     </script>
 </body>
 </html>
