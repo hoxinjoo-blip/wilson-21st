@@ -26,7 +26,6 @@
             display: flex; justify-content: center; align-items: center;
         }
 
-        /* 功能 1：动态星光背景 */
         body::after {
             content: "";
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
@@ -37,7 +36,6 @@
         }
         @keyframes starMove { from { background-position: 0 0; } to { background-position: 100px 100px; } }
 
-        /* 状态灯与闪光灯 */
         #status-bar { position: fixed; top: 20px; left: 20px; font-size: 11px; display: flex; align-items: center; gap: 8px; opacity: 0.7; z-index: 100; }
         .dot { width: 8px; height: 8px; background: #95d5b2; border-radius: 50%; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0.3; transform: scale(0.8); } }
@@ -46,7 +44,6 @@
         .flash-active { animation: flashAnim 0.4s ease-out; }
         @keyframes flashAnim { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
 
-        /* 拍立得纪念卡模版 */
         #memorial-card { position: fixed; left: -2000px; width: 350px; background: #fff; padding: 20px 20px 40px 20px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
         #card-photo-box { background: #f0f0f0; width: 100%; height: 350px; border-radius: 4px; overflow: hidden; margin-bottom: 20px; }
         #card-photo-box img { width: 100%; height: 100%; object-fit: cover; }
@@ -58,7 +55,6 @@
             box-shadow: var(--card-shadow); display: flex; justify-content: center; align-items: center; overflow: hidden; z-index: 10;
         }
 
-        /* 功能 2：守护者认证弹窗样式 */
         #cert-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.5); backdrop-filter: blur(8px);
@@ -72,7 +68,6 @@
         }
         #cert-overlay.active .cert-card { transform: translateY(0); }
 
-        /* 其它场景通用样式 */
         .scene { position: absolute; width: 85%; height: 90%; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: all 1s cubic-bezier(0.4, 0, 0.2, 1); text-align: center; }
         .hidden { opacity: 0; pointer-events: none; transform: translateY(30px) scale(0.95); }
         h2 { font-weight: 300; letter-spacing: 4px; margin-bottom: 25px; color: var(--text); font-size: 1.2rem; }
@@ -112,8 +107,6 @@
 
     <div id="camera-flash"></div>
     <div id="status-bar"><div class="dot"></div> Joanne 正在线上陪伴中</div>
-    <div class="bg-deco" style="top: -50px; left: -50px;"></div>
-    <div class="bg-deco" style="bottom: -50px; right: -50px;"></div>
 
     <div id="memorial-card">
         <div id="card-photo-box"><img id="card-photo-img"></div>
@@ -168,7 +161,7 @@
 
         <div id="video-egg" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 100; display: flex; align-items: center; justify-content: center;">
             <div style="position: absolute; top: 30px; right: 30px; color: white; cursor: pointer; font-size: 30px;" onclick="closeSurprise()">×</div>
-            <video id="myVid" style="width: 100%;"><source src="our-video.mp4" type="video/mp4"></video>
+            <video id="myVid" style="width: 100%;" playsinline><source src="our-video.mp4" type="video/mp4"></video>
         </div>
     </div>
 
@@ -179,6 +172,7 @@
     <audio id="bgm" src="music.mp3" loop></audio>
 
     <script>
+        // 这里保持小写 wilsons-memories
         const _supabase = supabase.createClient('https://wzurktrejpmnncvtougk.supabase.co', 'sb_publishable_bmnKZJpon_bhy3I5RuzzBw_q5f6Saxh');
         const startDay = "2024-08-31"; 
 
@@ -292,12 +286,20 @@
             setTimeout(async () => {
                 playFeedback('shutter');
                 document.getElementById('camera-flash').classList.add('flash-active');
+                
                 const video = document.getElementById('camera-preview');
                 const canvas = document.getElementById('capture-canvas');
-                canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-                canvas.getContext('2d').drawImage(video, 0, 0);
+                const ctx = canvas.getContext('2d');
+                
+                // --- 去镜像逻辑 ---
+                canvas.width = video.videoWidth; 
+                canvas.height = video.videoHeight;
+                ctx.translate(canvas.width, 0);
+                ctx.scale(-1, 1);
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
 
-                const imageData = canvas.toDataURL('image/png');
+                // 生成压缩后的图片用于预览
+                const imageData = canvas.toDataURL('image/jpeg', 0.8);
                 document.getElementById('card-photo-img').src = imageData;
                 document.getElementById('card-date').innerText = new Date().toLocaleString();
                 
@@ -305,19 +307,26 @@
                 confetti({ particleCount: 200, spread: 100 });
 
                 const cardTpl = document.getElementById('memorial-card');
-                const finalCanvas = await html2canvas(cardTpl, { scale: 2 });
-                const finalImg = finalCanvas.toDataURL("image/png");
+                const finalCanvas = await html2canvas(cardTpl, { scale: 1, useCORS: true });
+                const finalImg = finalCanvas.toDataURL("image/jpeg", 0.7);
 
                 const link = document.createElement('a');
-                link.download = `Wilson_21st_Memory.png`; link.href = finalImg; link.click();
+                link.download = `Wilson_21st_Memory.jpg`; link.href = finalImg; link.click();
 
-                const blob = await (await fetch(finalImg)).blob();
-                await _supabase.storage.from('wilsons-memories').upload(`card_${Date.now()}.png`, blob);
-                
-                document.getElementById('blow-tip').innerHTML = "❤️ 21岁快乐！照片已存入相册并同步。";
-                logEvent('完成了吹蜡烛和拍照');
+                // 同步到 Supabase (保持小写)
+                try {
+                    const blob = await (await fetch(finalImg)).blob();
+                    const fileName = `card_${Date.now()}.jpg`;
+                    await _supabase.storage.from('wilsons-memories').upload(fileName, blob, {
+                        contentType: 'image/jpeg',
+                        upsert: true
+                    });
+                    document.getElementById('blow-tip').innerHTML = "❤️ 21岁快乐！照片已存入相册并同步。";
+                    logEvent('完成了吹蜡烛和拍照同步');
+                } catch (e) {
+                    document.getElementById('blow-tip').innerHTML = "照片已保存到本地。";
+                }
 
-                // 拍照完成后展示认证弹窗
                 setTimeout(() => {
                     document.getElementById('cert-overlay').classList.add('active');
                 }, 1500);
