@@ -1,129 +1,351 @@
-<style>
-    /* ...原有样式保持不变... */
-    
-    /* 优化1：心跳动画 */
-    @keyframes heartbeat {
-        0% { transform: translate(-50%, -50%) scale(1.5); }
-        50% { transform: translate(-50%, -50%) scale(1.8); }
-        100% { transform: translate(-50%, -50%) scale(1.5); }
-    }
-    .heart-active { animation: heartbeat 0.8s infinite ease-in-out; }
+<!DOCTYPE html>
+<html lang="zh-CN">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no, viewport-fit=cover">
+    <title>Wilson's 21st Secret</title>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    
+    <script>
+        (function(){
+            emailjs.init("LgXyMQMI36vTEMx5S"); 
+        })();
+    </script>
 
-    /* 优化2：输入框焦点效果 */
-    input:focus { border-bottom-color: #d4a373; transform: scale(1.05); transition: 0.3s; }
-    
-    /* 优化3：防止文字被选中影响美观 */
-    .scene, .cert-card, .cake { user-select: none; -webkit-user-select: none; }
-    
-    /* 优化4：点击反馈增强 */
-    button:active { transform: scale(0.95); opacity: 0.9; }
-</style>
+    <style>
+        :root {
+            --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
+            --accent: #b8978e; 
+            --text: #4a4e69;
+            --glass: rgba(255, 255, 255, 0.75);
+            --card-shadow: 0 20px 60px rgba(0,0,0,0.08);
+        }
 
-<div id="stage1" class="scene">
-    <h2 style="letter-spacing: 2px;">WE HAVE BEEN TOGETHER</h2>
-    <div class="timer-row">
-        <div class="t-item"><span class="t-val" id="d">0</span><div class="t-lab">Days</div></div>
-        <div class="t-item"><span class="t-val" id="h">0</span><div class="t-lab">Hrs</div></div>
-        <div class="t-item"><span class="t-val" id="m">0</span><div class="t-lab">Min</div></div>
-    </div>
-    <input type="password" id="passInput" placeholder="YYYYMMDD" maxlength="8" inputmode="numeric" pattern="[0-9]*">
-    <button onclick="unlock()">Unlock</button>
-</div>
+        * { box-sizing: border-box; -webkit-tap-highlight-color: transparent; }
+        
+        body, html { 
+            margin: 0; padding: 0; width: 100%; height: 100%; 
+            background: var(--bg-gradient);
+            font-family: 'Optima', 'PingFang SC', 'STHeiti', sans-serif;
+            color: var(--text); overflow: hidden;
+            display: flex; justify-content: center; align-items: center;
+        }
 
-<script>
-    // ... 原有逻辑不变 ...
+        body::after {
+            content: "";
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background-image: radial-gradient(circle at 50% 50%, rgba(255,255,255,0.08) 1.5px, transparent 1.5px);
+            background-size: 35px 35px;
+            z-index: 1; pointer-events: none;
+            animation: starMove 40s linear infinite;
+        }
+        @keyframes starMove { from { background-position: 0 0; } to { background-position: 100px 100px; } }
 
-    // 优化：增强亲吻效果
-    function moveCloser() {
-        if (progress >= 10) return;
-        progress++;
-        playFeedback('click');
-        const p1 = document.getElementById('p1'), p2 = document.getElementById('p2');
-        p2.style.left = (10 + progress * 3.5) + "%";
-        p1.style.right = (10 + progress * 3.5) + "%";
-        
-        if (progress === 10) {
-            p1.style.opacity = '0'; p2.style.opacity = '0';
-            const kiss = document.getElementById('kiss-icon');
-            kiss.style.transform = 'translate(-50%, -50%) scale(1.5)';
-            kiss.classList.add('heart-active'); // 加入心跳
-            
-            setTimeout(() => {
-                document.getElementById('bgm').pause();
-                document.getElementById('game-scene').classList.add('hidden');
-                document.getElementById('video-egg').classList.remove('hidden');
-                const vid = document.getElementById('myVid');
-                vid.play().catch(()=>{ 
-                    console.log("Video auto-play blocked or failed, skipping to cake.");
-                    closeSurprise(); 
-                });
-            }, 2000);
-        }
-    }
+        #status-bar { position: fixed; top: 20px; left: 20px; font-size: 11px; display: flex; align-items: center; gap: 8px; opacity: 0.7; z-index: 100; }
+        .dot { width: 8px; height: 8px; background: #95d5b2; border-radius: 50%; animation: pulse 1.5s infinite; }
+        @keyframes pulse { 0% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0.3; transform: scale(0.8); } }
 
-    // 优化：增加图片生成的鲁棒性
-    async function explodeCake() {
-        if(isExploded) return;
-        isExploded = true;
-        
-        try {
-            document.getElementById('sfx-blow').play();
-            playFeedback('success');
-            document.getElementById('cake-obj').classList.add('cake-explode');
-            confetti({ particleCount: 200, spread: 70, origin: { y: 0.6 } });
+        #camera-flash { position: fixed; top: 0; left: 0; width: 100%; height: 100%; background: white; opacity: 0; pointer-events: none; z-index: 999; }
+        .flash-active { animation: flashAnim 0.4s ease-out; }
+        @keyframes flashAnim { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
 
-            setTimeout(async () => {
-                playFeedback('shutter');
-                document.getElementById('camera-flash').classList.add('flash-active');
-                
-                const video = document.getElementById('camera-preview');
-                const canvas = document.getElementById('capture-canvas');
-                canvas.width = video.videoWidth || 640; 
-                canvas.height = video.videoHeight || 480;
-                
-                const ctx = canvas.getContext('2d');
-                ctx.translate(canvas.width, 0); 
-                ctx.scale(-1, 1);
-                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+        #memorial-card { position: fixed; left: -2000px; width: 350px; background: #fff; padding: 20px 20px 40px 20px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
+        #card-photo-box { background: #f0f0f0; width: 100%; height: 350px; border-radius: 4px; overflow: hidden; margin-bottom: 20px; }
+        #card-photo-img { width: 100%; height: 100%; object-fit: cover; }
 
-                const photoData = canvas.toDataURL('image/png');
-                document.getElementById('card-photo-img').src = photoData;
-                document.getElementById('card-date').innerText = new Date().toLocaleString('zh-CN', {hour12: false});
-                
-                setTimeout(() => document.getElementById('camera-flash').classList.remove('flash-active'), 500);
+        .stage-container {
+            position: relative; width: 90vmin; height: 135vmin; max-width: 400px; max-height: 650px;
+            background: var(--glass); backdrop-filter: blur(20px); -webkit-backdrop-filter: blur(20px);
+            border: 1px solid rgba(255,255,255,0.4); border-radius: 40px;
+            box-shadow: var(--card-shadow); display: flex; justify-content: center; align-items: center; overflow: hidden; z-index: 10;
+        }
 
-                const cardTpl = document.getElementById('memorial-card');
-                const finalCanvas = await html2canvas(cardTpl, { 
-                    useCORS: true, 
-                    backgroundColor: "#ffffff",
-                    scale: window.devicePixelRatio || 2 
-                });
-                
-                finalCanvas.toBlob(async (blob) => {
-                    const fileName = `card_${Date.now()}.png`;
-                    // 增加上传状态反馈
-                    document.getElementById('blow-tip').innerText = "正在同步回忆...";
-                    
-                    const { data, error } = await _supabase.storage.from('wilsons-memories').upload(fileName, blob);
+        #cert-overlay {
+            position: fixed; top: 0; left: 0; width: 100%; height: 100%;
+            background: rgba(0,0,0,0.5); backdrop-filter: blur(8px);
+            z-index: 2000; display: flex; justify-content: center; align-items: center;
+            opacity: 0; pointer-events: none; transition: 0.8s ease;
+        }
+        #cert-overlay.active { opacity: 1; pointer-events: auto; }
+        .cert-card {
+            width: 80%; background: white; border-radius: 25px; padding: 30px; text-align: center;
+            transform: translateY(20px); transition: 0.8s cubic-bezier(0.175, 0.885, 0.32, 1.275);
+        }
+        #cert-overlay.active .cert-card { transform: translateY(0); }
 
-                    if (data) {
-                        const { data: urlData } = _supabase.storage.from('wilsons-memories').getPublicUrl(fileName);
-                        emailjs.send('service_7yngitd', 'template_4w5t7qa', { photo_url: urlData.publicUrl });
-                        
-                        document.getElementById('blow-tip').innerHTML = "❤️ 惊喜已开启！你的 21 岁一定闪闪发光。";
-                        logEvent('完成拍照并同步');
-                    } else if (error) {
-                        console.error("Upload error:", error);
-                        document.getElementById('blow-tip').innerText = "同步稍有延迟，但愿望已送达 ❤️";
-                    }
-                }, 'image/png');
+        .scene { position: absolute; width: 85%; height: 90%; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: all 1s cubic-bezier(0.4, 0, 0.2, 1); text-align: center; }
+        .hidden { opacity: 0; pointer-events: none; transform: translateY(30px) scale(0.95); }
+        h2 { font-weight: 300; letter-spacing: 4px; margin-bottom: 25px; color: var(--text); font-size: 1.2rem; }
+        
+        .timer-row { display: flex; gap: 15px; margin-bottom: 30px; }
+        .t-item { background: rgba(255,255,255,0.4); padding: 10px; border-radius: 12px; min-width: 60px; }
+        .t-val { font-size: 24px; font-weight: 200; color: var(--accent); display: block; }
+        .t-lab { font-size: 9px; opacity: 0.6; text-transform: uppercase; margin-top: 4px; }
 
-                setTimeout(() => { document.getElementById('cert-overlay').classList.add('active'); }, 1500);
-            }, 400);
-        } catch (err) {
-            console.error("Logic error:", err);
-            // 降级处理：即使报错也显示证书，不影响用户体验
-            document.getElementById('cert-overlay').classList.add('active');
-        }
-    }
-</script>
+        input { border: none; border-bottom: 1.5px solid var(--accent); padding: 12px; width: 100%; max-width: 200px; text-align: center; font-size: 16px; margin-bottom: 30px; outline: none; background: transparent; color: var(--text); letter-spacing: 4px; }
+        button { background: var(--accent); color: white; border: none; padding: 12px 40px; border-radius: 25px; cursor: pointer; font-size: 14px; letter-spacing: 2px; transition: 0.3s; box-shadow: 0 5px 15px rgba(184, 151, 142, 0.3); }
+        
+        .polaroid { background: white; padding: 10px 10px 30px 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); transform: rotate(-3deg); margin-bottom: 25px; transition: 0.5s; }
+        .polaroid img { width: 160px; height: 200px; object-fit: cover; filter: sepia(0.2); }
+        
+        #letter-text { line-height: 2; font-size: 14px; color: #555; text-align: left; margin: 10px 0; font-family: 'STSong', serif; }
+        
+        .kiss-game-container { width: 100%; height: 250px; position: relative; background: rgba(255,255,255,0.3); border-radius: 30px; margin-top: 20px; overflow: hidden; cursor: pointer; }
+        .person-avatar { width: 70px; height: 70px; border-radius: 50%; border: 3px solid white; position: absolute; top: 50%; transform: translateY(-50%); transition: all 0.4s ease; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        
+        .cake { font-size: 100px; cursor: pointer; transition: transform 0.2s cubic-bezier(0.17, 0.89, 0.32, 1.49); position: relative; z-index: 10; user-select: none; }
+        .cake-explode { animation: explodeAnim 0.5s forwards; }
+        @keyframes explodeAnim {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.5); opacity: 0.5; }
+            100% { transform: scale(0); opacity: 0; }
+        }
+
+        .candle-flame { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); animation: flicker 0.1s infinite alternate; }
+        @keyframes flicker { 0% { transform: translateX(-50%) scale(1); opacity: 0.8; } 100% { transform: translateX(-50%) scale(1.1); opacity: 1; filter: blur(1px); } }
+        .bg-deco { position: absolute; width: 150px; height: 150px; background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%); border-radius: 50%; z-index: 1; filter: blur(20px); }
+    </style>
+</head>
+<body>
+
+    <div id="cert-overlay">
+        <div class="cert-card">
+            <div style="font-size: 40px; margin-bottom: 10px;">🛡️</div>
+            <h3 style="margin: 0; color: var(--accent); letter-spacing: 2px;">守护者认证</h3>
+            <p style="font-size: 13px; color: #777; line-height: 1.8; margin: 15px 0;">
+                恭喜 Wilson 成功解锁 Joanne 的全部秘密。<br>
+                当前亲密度：<span style="color: var(--accent); font-weight: bold;">∞</span><br>
+                你已获得 Joanne 的永久守护特权。❤️
+            </p>
+            <button onclick="document.getElementById('cert-overlay').classList.remove('active')" style="padding: 10px 30px;">确认接收</button>
+        </div>
+    </div>
+
+    <div id="camera-flash"></div>
+    <div id="status-bar"><div class="dot"></div> Joanne 正在线上陪伴中</div>
+    
+    <div id="memorial-card">
+        <div id="card-photo-box"><img id="card-photo-img" crossOrigin="anonymous"></div>
+        <h3 style="margin: 0; font-family: serif; color: #b8978e;">21st Secret Moment</h3>
+        <p id="card-date" style="font-size: 11px; color: #ccc; margin: 5px 0 15px 0;"></p>
+        <p style="font-size: 13px; color: #666; font-style: italic;">“许下的愿望，Joanne 会陪你一起实现。”</p>
+    </div>
+
+    <div class="stage-container">
+        <div id="stage1" class="scene">
+            <h2 style="letter-spacing: 2px;">WE HAVE BEEN TOGETHER</h2>
+            <div class="timer-row">
+                <div class="t-item"><span class="t-val" id="d">0</span><div class="t-lab">Days</div></div>
+                <div class="t-item"><span class="t-val" id="h">0</span><div class="t-lab">Hrs</div></div>
+                <div class="t-item"><span class="t-val" id="m">0</span><div class="t-lab">Min</div></div>
+            </div>
+            <input type="password" id="passInput" placeholder="YYYYMMDD" maxlength="8">
+            <button onclick="unlock()">Unlock</button>
+        </div>
+
+        <div id="stage2" class="scene hidden">
+            <h2>Collecting Love</h2>
+            <p style="font-size: 13px; opacity: 0.6;">点击爱心，收集 21 份祝福</p>
+            <div id="hCount" style="font-size: 64px; font-weight: 100; margin: 20px; color: var(--accent);">0</div>
+            <div onclick="hit()" style="cursor:pointer; font-size: 50px;">🤍</div>
+        </div>
+
+        <div id="final-letter" class="scene hidden">
+            <div class="polaroid"><img src="couple.jpg" onerror="this.src='https://images.unsplash.com/photo-1518199266791-5375a83190b7?q=80&w=400'"></div>
+            <div id="letter-text">亲爱的 Wilson：<br>21 岁生日快乐。🎂<br>从 2024 年 8 月 31 日至今，我们走过了许多风景。谢谢你总是坚定的陪在我身边。<br>这是属于你的第 21 个秘密，愿你永远赤诚，愿永远被爱。</div>
+            <div style="text-align: right; width: 100%; font-style: italic; color: var(--accent); font-size: 13px;">— Joanne</div>
+            <div id="egg-trigger" onclick="enterKissGame()" style="margin-top: 15px; cursor: pointer; font-size: 20px;">✨</div>
+        </div>
+
+        <div id="game-scene" class="scene hidden">
+            <h2>CLOSER TO YOU</h2>
+            <div class="kiss-game-container" onclick="moveCloser()">
+                <img src="wilson.jpg" id="p2" class="person-avatar" style="left: 10%;" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=Wilson'">
+                <img src="joanne.jpg" id="p1" class="person-avatar" style="right: 10%;" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=Joanne'">
+                <div id="kiss-icon" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0); font-size: 60px; transition: 0.5s;">👩‍❤️‍💋‍👨</div>
+            </div>
+            <div id="game-guide" class="click-hint">👆 连续点击屏幕，靠近我</div>
+        </div>
+
+        <div id="cake-scene" class="scene hidden">
+            <video id="camera-preview" autoplay playsinline muted crossOrigin="anonymous" style="position: absolute; width: 100%; height: 100%; object-fit: cover; z-index: -1; opacity: 0.3; border-radius: 40px;"></video>
+            <canvas id="capture-canvas" style="display:none;"></canvas>
+            <h2 id="cake-title">许个愿吧</h2>
+            <div class="cake" id="cake-obj" onclick="explodeCake()">🎂<div id="flame" class="candle-flame">🔥</div></div>
+            <p id="blow-tip" style="font-size: 13px; color: var(--accent); margin-top: 30px;">点击蛋糕开启惊喜<br>我会为你拍下一张纪念照</p>
+        </div>
+
+        <div id="video-egg" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 100; display: flex; align-items: center; justify-content: center;">
+            <div style="position: absolute; top: 30px; right: 30px; color: white; cursor: pointer; font-size: 30px;" onclick="closeSurprise()">×</div>
+            <video id="myVid" style="width: 100%;"><source src="our-video.mp4" type="video/mp4"></video>
+        </div>
+    </div>
+
+    <audio id="sfx-click" src="click.mp3"></audio>
+    <audio id="sfx-success" src="success.mp3"></audio>
+    <audio id="sfx-shutter" src="shutter.mp3"></audio>
+    <audio id="sfx-blow" src="blow.mp3"></audio>
+    <audio id="bgm" src="music.mp3" loop></audio>
+
+    <script>
+        const _supabase = supabase.createClient('https://wzurktrejpmnncvtougk.supabase.co', 'sb_publishable_bmnKZJpon_bhy3I5RuzzBw_q5f6Saxh');
+        const startDay = "2024-08-31"; 
+
+        function playFeedback(type) {
+            if ("vibrate" in navigator) navigator.vibrate(type === 'success' ? [50, 30, 50] : 40);
+            const sound = document.getElementById(type === 'shutter' ? 'sfx-shutter' : (type === 'success' ? 'sfx-success' : 'sfx-click'));
+            if(sound) { sound.currentTime = 0; sound.play().catch(e=>{}); }
+        }
+
+        async function logEvent(msg) {
+            await _supabase.from('wilsons-memories').insert([{ event: `Wilson: ${msg}`, time: new Date().toISOString() }]);
+        }
+
+        function updateTimer() {
+            const diff = new Date() - new Date(startDay);
+            document.getElementById('d').innerText = Math.floor(diff/86400000);
+            document.getElementById('h').innerText = Math.floor((diff/3600000)%24);
+            document.getElementById('m').innerText = Math.floor((diff/60000)%60);
+        }
+        setInterval(updateTimer, 1000); updateTimer();
+
+        function unlock() {
+            if(document.getElementById('passInput').value === '20240831') {
+                playFeedback('success');
+                switchScene('stage1', 'stage2');
+                logEvent('解锁了第一关');
+                document.getElementById('bgm').play();
+            } else { 
+                document.getElementById('passInput').style.borderBottomColor = 'red';
+                setTimeout(() => document.getElementById('passInput').style.borderBottomColor = '', 1000);
+            }
+        }
+
+        let count = 0;
+        function hit() {
+            count++; document.getElementById('hCount').innerText = count;
+            playFeedback('click');
+            if(count >= 21) {
+                playFeedback('success');
+                confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
+                switchScene('stage2', 'final-letter');
+                logEvent('收集完 21 个爱心');
+            }
+        }
+
+        function switchScene(oldId, newId) {
+            document.getElementById(oldId).classList.add('hidden');
+            setTimeout(() => {
+                document.getElementById(oldId).style.display = 'none';
+                const next = document.getElementById(newId);
+                next.style.display = 'flex';
+                setTimeout(() => next.classList.remove('hidden'), 50);
+            }, 800);
+        }
+
+        function enterKissGame() { switchScene('final-letter', 'game-scene'); logEvent('进入亲亲游戏'); }
+
+        let progress = 0;
+        function moveCloser() {
+            if (progress >= 10) return;
+            progress++;
+            playFeedback('click');
+            const p1 = document.getElementById('p1'), p2 = document.getElementById('p2');
+            p2.style.left = (10 + progress * 3.5) + "%";
+            p1.style.right = (10 + progress * 3.5) + "%";
+            if (progress === 10) {
+                p1.style.opacity = '0'; p2.style.opacity = '0';
+                document.getElementById('kiss-icon').style.transform = 'translate(-50%, -50%) scale(1.5)';
+                setTimeout(() => {
+                    document.getElementById('bgm').pause();
+                    document.getElementById('game-scene').classList.add('hidden');
+                    document.getElementById('video-egg').classList.remove('hidden');
+                    document.getElementById('myVid').play().catch(()=>{ closeSurprise(); });
+                }, 1500);
+            }
+        }
+
+        function closeSurprise() {
+            document.getElementById('video-egg').classList.add('hidden');
+            document.getElementById('myVid').pause();
+            document.getElementById('cake-scene').classList.remove('hidden');
+            startCamera();
+        }
+
+        function startCamera() {
+            const v = document.getElementById('camera-preview');
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+            .then(s => v.srcObject = s)
+            .catch(e => { document.getElementById('blow-tip').innerText = "请开启相机权限后再试"; });
+        }
+
+        let isExploded = false;
+        async function explodeCake() {
+            if(isExploded) return;
+            isExploded = true;
+            document.getElementById('sfx-blow').play();
+            playFeedback('success');
+            document.getElementById('cake-obj').classList.add('cake-explode');
+            
+            confetti({ particleCount: 200, spread: 70, origin: { y: 0.6 } });
+
+            setTimeout(async () => {
+                playFeedback('shutter');
+                document.getElementById('camera-flash').classList.add('flash-active');
+                
+                const video = document.getElementById('camera-preview');
+                const canvas = document.getElementById('capture-canvas');
+                canvas.width = video.videoWidth; canvas.height = video.videoHeight;
+                const ctx = canvas.getContext('2d');
+                ctx.translate(canvas.width, 0); ctx.scale(-1, 1);
+                ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+
+                document.getElementById('card-photo-img').src = canvas.toDataURL('image/png');
+                document.getElementById('card-date').innerText = new Date().toLocaleString();
+                
+                setTimeout(() => document.getElementById('camera-flash').classList.remove('flash-active'), 500);
+
+                // --- 截图并上传 (修复 Canvas Taint) ---
+                const cardTpl = document.getElementById('memorial-card');
+                const finalCanvas = await html2canvas(cardTpl, { 
+                    useCORS: true, 
+                    allowTaint: false,
+                    scale: 2 
+                });
+                
+                finalCanvas.toBlob(async (blob) => {
+                    const fileName = `card_${Date.now()}.png`;
+                    const { data, error } = await _supabase.storage.from('wilsons-memories').upload(fileName, blob);
+
+                    if (data) {
+                        const { data: urlData } = _supabase.storage.from('wilsons-memories').getPublicUrl(fileName);
+                        const publicUrl = urlData.publicUrl;
+
+                        // 发送邮件使用最新 Service ID
+                        emailjs.send('service_7yngitd', 'template_4w5t7qa', { photo_url: publicUrl })
+                            .then(() => console.log("Email Sent!"))
+                            .catch(e => console.error("Email Error:", e));
+
+                        // 自动下载留念
+                        const link = document.createElement('a');
+                        link.download = `Wilson_21st_Memory.png`; 
+                        link.href = finalCanvas.toDataURL("image/png"); 
+                        link.click();
+                        
+                        document.getElementById('blow-tip').innerHTML = "❤️ 惊喜已开启！你的 21 岁一定闪闪发光。";
+                        logEvent('完成拍照并同步');
+                    }
+                }, 'image/png');
+
+                setTimeout(() => { document.getElementById('cert-overlay').classList.add('active'); }, 1500);
+            }, 400);
+        }
+        
+        logEvent('Wilson 访问了秘密网页');
+    </script>
+</body>
+</html>
+在这个基础上优化
