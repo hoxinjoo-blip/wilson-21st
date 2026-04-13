@@ -7,12 +7,6 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
-    
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-core"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-converter"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs-backend-webgl"></script>
-    <script src="https://cdn.jsdelivr.net/npm/@tensorflow-models/face-landmarks-detection"></script>
-
     <style>
         :root {
             --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
@@ -64,7 +58,6 @@
             box-shadow: var(--card-shadow); display: flex; justify-content: center; align-items: center; overflow: hidden; z-index: 10;
         }
 
-        /* 守护者认证弹窗 */
         #cert-overlay {
             position: fixed; top: 0; left: 0; width: 100%; height: 100%;
             background: rgba(0,0,0,0.5); backdrop-filter: blur(8px);
@@ -78,24 +71,30 @@
         }
         #cert-overlay.active .cert-card { transform: translateY(0); }
 
-        /* 场景通用样式 */
         .scene { position: absolute; width: 85%; height: 90%; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: all 1s cubic-bezier(0.4, 0, 0.2, 1); text-align: center; }
         .hidden { opacity: 0; pointer-events: none; transform: translateY(30px) scale(0.95); }
         h2 { font-weight: 300; letter-spacing: 4px; margin-bottom: 25px; color: var(--text); font-size: 1.2rem; }
+        
         .timer-row { display: flex; gap: 15px; margin-bottom: 30px; }
         .t-item { background: rgba(255,255,255,0.4); padding: 10px; border-radius: 12px; min-width: 60px; }
         .t-val { font-size: 24px; font-weight: 200; color: var(--accent); display: block; }
         .t-lab { font-size: 9px; opacity: 0.6; text-transform: uppercase; margin-top: 4px; }
+        
         input { border: none; border-bottom: 1.5px solid var(--accent); padding: 12px; width: 100%; max-width: 200px; text-align: center; font-size: 16px; margin-bottom: 30px; outline: none; background: transparent; color: var(--text); letter-spacing: 4px; }
         button { background: var(--accent); color: white; border: none; padding: 12px 40px; border-radius: 25px; cursor: pointer; font-size: 14px; letter-spacing: 2px; transition: 0.3s; box-shadow: 0 5px 15px rgba(184, 151, 142, 0.3); }
-        .polaroid { background: white; padding: 10px 10px 30px 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); transform: rotate(-3deg); margin-bottom: 25px; transition: 0.5s; }
+        
+        .polaroid { background: white; padding: 10px 10px 30px 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); transform: rotate(-3deg); margin-bottom: 25px; }
         .polaroid img { width: 160px; height: 200px; object-fit: cover; filter: sepia(0.2); }
+        
         #letter-text { line-height: 2.2; font-size: 14px; color: #555; text-align: left; margin: 10px 0; font-family: 'STSong', serif; }
+        
         .kiss-game-container { width: 100%; height: 250px; position: relative; background: rgba(255,255,255,0.3); border-radius: 30px; margin-top: 20px; overflow: hidden; cursor: pointer; }
         .person-avatar { width: 70px; height: 70px; border-radius: 50%; border: 3px solid white; position: absolute; top: 50%; transform: translateY(-50%); transition: all 0.4s ease; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        
         .click-hint { margin-top: 15px; font-size: 13px; color: var(--accent); animation: breathing 2s infinite; display: flex; align-items: center; gap: 5px; opacity: 0.8; }
         @keyframes breathing { 0%, 100% { opacity: 0.3; transform: scale(0.95); } 50% { opacity: 1; transform: scale(1); } }
-        .cake { font-size: 100px; cursor: default; transition: 0.3s; position: relative; }
+        
+        .cake { font-size: 100px; cursor: pointer; transition: 0.3s; position: relative; }
         .candle-flame { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); animation: flicker 0.1s infinite alternate; }
         @keyframes flicker { 0% { transform: translateX(-50%) scale(1); opacity: 0.8; } 100% { transform: translateX(-50%) scale(1.1); opacity: 1; filter: blur(1px); } }
         .bg-deco { position: absolute; width: 150px; height: 150px; background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%); border-radius: 50%; z-index: 1; filter: blur(20px); }
@@ -151,7 +150,7 @@
             <div class="polaroid"><img src="couple.jpg" onerror="this.src='https://images.unsplash.com/photo-1518199266791-5375a83190b7?q=80&w=400'"></div>
             <div id="letter-text">亲爱的 Wilson：<br>21 岁生日快乐。🎂<br>从 2024 年 8 月 31 日至今，我们走过了许多风景。谢谢你总是坚定的陪在我身边。<br>这是属于你的第 21 个秘密，愿你永远赤诚，愿你永远被爱。</div>
             <div style="text-align: right; width: 100%; font-style: italic; color: var(--accent); font-size: 13px;">— Joanne</div>
-            <div id="egg-trigger" onclick="enterKissGame()" style="margin-top: 15px; cursor: pointer; font-size: 20px;">✨</div>
+            <div onclick="enterKissGame()" style="margin-top: 15px; cursor: pointer; font-size: 20px;">✨</div>
         </div>
 
         <div id="game-scene" class="scene hidden">
@@ -161,15 +160,15 @@
                 <img src="joanne.jpg" id="p1" class="person-avatar" style="right: 10%;" onerror="this.src='https://api.dicebear.com/7.x/avataaars/svg?seed=Joanne'">
                 <div id="kiss-icon" style="position: absolute; top: 50%; left: 50%; transform: translate(-50%, -50%) scale(0); font-size: 60px; transition: 0.5s;">👩‍❤️‍💋‍👨</div>
             </div>
-            <div id="game-guide" class="click-hint">👆 连续点击屏幕，靠近我</div>
+            <div class="click-hint">👆 连续点击屏幕，靠近我</div>
         </div>
 
         <div id="cake-scene" class="scene hidden">
             <video id="camera-preview" autoplay playsinline muted style="position: absolute; width: 100%; height: 100%; object-fit: cover; z-index: -1; opacity: 0.3; border-radius: 40px;"></video>
             <canvas id="capture-canvas" style="display:none;"></canvas>
             <h2 id="cake-title">许个愿吧</h2>
-            <div class="cake" id="cake-obj">🎂<div id="flame" class="candle-flame">🔥</div></div>
-            <p id="blow-tip" style="font-size: 13px; color: var(--accent); margin-top: 30px;">吻向镜头或轻吹气开启 21 岁<br>我会为你拍下一张纪念照</p>
+            <div class="cake" id="cake-obj" onclick="blowCandle()">🎂<div id="flame" class="candle-flame">🔥</div></div>
+            <p id="blow-tip" style="font-size: 13px; color: var(--accent); margin-top: 30px;">轻触蛋糕吹灭蜡烛<br>我会为你拍下一张纪念照</p>
         </div>
 
         <div id="video-egg" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 100; display: flex; align-items: center; justify-content: center;">
@@ -187,17 +186,12 @@
     <script>
         const _supabase = supabase.createClient('https://wzurktrejpmnncvtougk.supabase.co', 'sb_publishable_bmnKZJpon_bhy3I5RuzzBw_q5f6Saxh');
         const startDay = "2024-08-31"; 
-        let detector;
         let isBlown = false;
 
         function playFeedback(type) {
-            if ("vibrate" in navigator) {
-                const pattern = type === 'success' ? [50, 30, 50] : 40;
-                navigator.vibrate(pattern);
-            }
             const soundId = type === 'shutter' ? 'sfx-shutter' : (type === 'success' ? 'sfx-success' : 'sfx-click');
             const sound = document.getElementById(soundId);
-            if(sound) { sound.currentTime = 0; sound.play().catch(e=>{}); }
+            if(sound) { sound.currentTime = 0; sound.play().catch(()=>{}); }
         }
 
         async function logEvent(msg) {
@@ -218,9 +212,6 @@
                 switchScene('stage1', 'stage2');
                 logEvent('解锁了第一关');
                 document.getElementById('bgm').play().catch(()=>{});
-            } else { 
-                document.getElementById('passInput').style.borderBottomColor = 'red';
-                setTimeout(() => document.getElementById('passInput').style.borderBottomColor = '', 1000);
             }
         }
 
@@ -229,10 +220,8 @@
             count++; document.getElementById('hCount').innerText = count;
             playFeedback('click');
             if(count >= 21) {
-                playFeedback('success');
                 confetti({ particleCount: 150, spread: 70, origin: { y: 0.6 } });
                 switchScene('stage2', 'final-letter');
-                logEvent('收集完 21 个爱心');
             }
         }
 
@@ -247,15 +236,12 @@
         }
 
         let progress = 0;
-        function enterKissGame() { switchScene('final-letter', 'game-scene'); logEvent('进入亲亲游戏'); }
+        function enterKissGame() { switchScene('final-letter', 'game-scene'); }
 
         function moveCloser() {
-            const guide = document.getElementById('game-guide');
-            if(guide) guide.style.opacity = '0';
             if (progress >= 10) return;
             progress++;
             playFeedback('click');
-            createMiniHeart();
             const p1 = document.getElementById('p1'), p2 = document.getElementById('p2');
             p2.style.left = (10 + progress * 3.5) + "%";
             p1.style.right = (10 + progress * 3.5) + "%";
@@ -271,71 +257,23 @@
             }
         }
 
-        function createMiniHeart() {
-            const heart = document.createElement('div');
-            heart.innerHTML = '❤️';
-            heart.style.cssText = `position: absolute; left: 50%; top: 50%; transform: translate(-50%, -50%); pointer-events: none; transition: all 1s ease-out; z-index: 100; font-size: 24px;`;
-            document.querySelector('.kiss-game-container').appendChild(heart);
-            setTimeout(() => {
-                heart.style.top = '20%'; heart.style.left = (50 + (Math.random() - 0.5) * 40) + '%';
-                heart.style.opacity = '0'; heart.style.transform = 'translate(-50%, -50%) scale(1.5)';
-                setTimeout(() => heart.remove(), 1000);
-            }, 10);
-        }
-
         function closeSurprise() {
             document.getElementById('video-egg').classList.add('hidden');
             document.getElementById('myVid').pause();
             document.getElementById('cake-scene').classList.remove('hidden');
-            // 启动视觉 AI 检测
-            startVisualAI();
-        }
-
-        async function startVisualAI() {
-            // 1. 获取摄像头权限
-            const stream = await navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } });
-            document.getElementById('camera-preview').srcObject = stream;
-
-            // 2. 加载模型
-            const model = faceLandmarksDetection.SupportedModels.MediaPipeFaceMesh;
-            detector = await faceLandmarksDetection.createDetector(model, {
-                runtime: 'mediapipe',
-                solutionPath: 'https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh',
-                refineLandmarks: true
-            });
-
-            detectFrame();
-        }
-
-        async function detectFrame() {
-            if(isBlown) return;
-            const video = document.getElementById('camera-preview');
-            const faces = await detector.estimateFaces(video);
-
-            if (faces.length > 0) {
-                const kp = faces[0].keypoints;
-                // 判定嘴部微小动作 (点13和14位移)
-                const lipGap = Math.sqrt(Math.pow(kp[13].x - kp[14].x, 2) + Math.pow(kp[13].y - kp[14].y, 2));
-                // 判定脸部靠近程度 (点33和263双眼距离)
-                const faceSize = Math.sqrt(Math.pow(kp[33].x - kp[263].x, 2) + Math.pow(kp[33].y - kp[263].y, 2));
-
-                // 核心判定：靠近(165以上) 且 嘴部轻微动作(1.5以上)
-                if (faceSize > 165 && lipGap > 1.5) { 
-                    blowCandle(); 
-                }
-            }
-            requestAnimationFrame(detectFrame);
+            // 只要获取摄像头流用于背景预览和拍照即可
+            navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
+            .then(s => document.getElementById('camera-preview').srcObject = s);
         }
 
         async function blowCandle() {
             if(isBlown) return;
             isBlown = true;
             
-            const flame = document.getElementById('flame');
             document.getElementById('sfx-blow').play();
-            flame.style.display = 'none';
-            playFeedback('success');
+            document.getElementById('flame').style.display = 'none';
 
+            // 拍照倒计时感
             setTimeout(async () => {
                 playFeedback('shutter');
                 document.getElementById('camera-flash').classList.add('flash-active');
@@ -344,7 +282,6 @@
                 const canvas = document.getElementById('capture-canvas');
                 const ctx = canvas.getContext('2d');
                 canvas.width = video.videoWidth; canvas.height = video.videoHeight;
-                // 镜像翻转处理（拍出来更自然）
                 ctx.translate(canvas.width, 0); ctx.scale(-1, 1);
                 ctx.drawImage(video, 0, 0);
 
@@ -354,26 +291,22 @@
                 
                 confetti({ particleCount: 200, spread: 100 });
 
-                // 生成最终拍立得图片
                 const cardTpl = document.getElementById('memorial-card');
                 const finalCanvas = await html2canvas(cardTpl, { scale: 2 });
                 const finalImg = finalCanvas.toDataURL("image/jpeg", 0.8);
 
-                // 上传到 Supabase
                 const blob = await (await fetch(finalImg)).blob();
                 await _supabase.storage.from('wilsons-memories').upload(`card_${Date.now()}.jpg`, blob);
                 
-                document.getElementById('blow-tip').innerHTML = "❤️ 21岁快乐！照片已存入相册并同步。";
-                logEvent('完成了视觉吹蜡烛和拍照');
+                document.getElementById('blow-tip').innerHTML = "❤️ 21岁快乐！愿望一定会实现。";
+                logEvent('完成了点击吹蜡烛和拍照');
 
                 setTimeout(() => {
                     document.getElementById('cert-overlay').classList.add('active');
                 }, 1500);
 
-            }, 600);
+            }, 500);
         }
-        
-        logEvent('Wilson 打开了网页');
     </script>
 </body>
 </html>
