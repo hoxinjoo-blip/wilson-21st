@@ -7,6 +7,15 @@
     <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
     <script src="https://cdn.jsdelivr.net/npm/canvas-confetti@1.5.1/dist/confetti.browser.min.js"></script>
     <script src="https://cdn.jsdelivr.net/npm/html2canvas@1.4.1/dist/html2canvas.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@emailjs/browser@3/dist/email.min.js"></script>
+    
+    <script>
+        // 初始化 EmailJS
+        (function(){
+            emailjs.init("LgXyMQMI36vTEMx5S"); 
+        })();
+    </script>
+
     <style>
         :root {
             --bg-gradient: linear-gradient(135deg, #f5f7fa 0%, #c3cfe2 100%);
@@ -37,7 +46,6 @@
         }
         @keyframes starMove { from { background-position: 0 0; } to { background-position: 100px 100px; } }
 
-        /* 状态灯与闪光灯 */
         #status-bar { position: fixed; top: 20px; left: 20px; font-size: 11px; display: flex; align-items: center; gap: 8px; opacity: 0.7; z-index: 100; }
         .dot { width: 8px; height: 8px; background: #95d5b2; border-radius: 50%; animation: pulse 1.5s infinite; }
         @keyframes pulse { 0% { opacity: 0.3; transform: scale(0.8); } 50% { opacity: 1; transform: scale(1.1); } 100% { opacity: 0.3; transform: scale(0.8); } }
@@ -46,7 +54,7 @@
         .flash-active { animation: flashAnim 0.4s ease-out; }
         @keyframes flashAnim { 0% { opacity: 0; } 25% { opacity: 1; } 100% { opacity: 0; } }
 
-        /* 拍立得纪念卡模版 */
+        /* 拍立得纪念卡模版 (隐藏在屏幕外，仅用于截图) */
         #memorial-card { position: fixed; left: -2000px; width: 350px; background: #fff; padding: 20px 20px 40px 20px; text-align: center; box-shadow: 0 10px 30px rgba(0,0,0,0.1); }
         #card-photo-box { background: #f0f0f0; width: 100%; height: 350px; border-radius: 4px; overflow: hidden; margin-bottom: 20px; }
         #card-photo-box img { width: 100%; height: 100%; object-fit: cover; }
@@ -74,17 +82,23 @@
         .scene { position: absolute; width: 85%; height: 90%; display: flex; flex-direction: column; justify-content: center; align-items: center; transition: all 1s cubic-bezier(0.4, 0, 0.2, 1); text-align: center; }
         .hidden { opacity: 0; pointer-events: none; transform: translateY(30px) scale(0.95); }
         h2 { font-weight: 300; letter-spacing: 4px; margin-bottom: 25px; color: var(--text); font-size: 1.2rem; }
+        
         .timer-row { display: flex; gap: 15px; margin-bottom: 30px; }
         .t-item { background: rgba(255,255,255,0.4); padding: 10px; border-radius: 12px; min-width: 60px; }
         .t-val { font-size: 24px; font-weight: 200; color: var(--accent); display: block; }
         .t-lab { font-size: 9px; opacity: 0.6; text-transform: uppercase; margin-top: 4px; }
+
         input { border: none; border-bottom: 1.5px solid var(--accent); padding: 12px; width: 100%; max-width: 200px; text-align: center; font-size: 16px; margin-bottom: 30px; outline: none; background: transparent; color: var(--text); letter-spacing: 4px; }
         button { background: var(--accent); color: white; border: none; padding: 12px 40px; border-radius: 25px; cursor: pointer; font-size: 14px; letter-spacing: 2px; transition: 0.3s; box-shadow: 0 5px 15px rgba(184, 151, 142, 0.3); }
+        
         .polaroid { background: white; padding: 10px 10px 30px 10px; box-shadow: 0 10px 30px rgba(0,0,0,0.1); transform: rotate(-3deg); margin-bottom: 25px; transition: 0.5s; }
         .polaroid img { width: 160px; height: 200px; object-fit: cover; filter: sepia(0.2); }
+        
         #letter-text { line-height: 2; font-size: 14px; color: #555; text-align: left; margin: 10px 0; font-family: 'STSong', serif; }
+        
         .kiss-game-container { width: 100%; height: 250px; position: relative; background: rgba(255,255,255,0.3); border-radius: 30px; margin-top: 20px; overflow: hidden; cursor: pointer; }
         .person-avatar { width: 70px; height: 70px; border-radius: 50%; border: 3px solid white; position: absolute; top: 50%; transform: translateY(-50%); transition: all 0.4s ease; box-shadow: 0 5px 15px rgba(0,0,0,0.1); }
+        
         .click-hint { margin-top: 15px; font-size: 13px; color: var(--accent); animation: breathing 2s infinite; display: flex; align-items: center; gap: 5px; opacity: 0.8; }
         @keyframes breathing { 0%, 100% { opacity: 0.3; transform: scale(0.95); } 50% { opacity: 1; transform: scale(1); } }
         
@@ -187,6 +201,7 @@
     <audio id="bgm" src="music.mp3" loop></audio>
 
     <script>
+        // 配置信息
         const _supabase = supabase.createClient('https://wzurktrejpmnncvtougk.supabase.co', 'sb_publishable_bmnKZJpon_bhy3I5RuzzBw_q5f6Saxh');
         const startDay = "2024-08-31"; 
 
@@ -295,15 +310,12 @@
             if(isExploded) return;
             isExploded = true;
             
-            // 1. 播放吹灭/爆炸音效并给震动反馈
             document.getElementById('sfx-blow').play();
             playFeedback('success');
 
-            // 2. 视觉爆炸效果
             const cake = document.getElementById('cake-obj');
             cake.classList.add('cake-explode');
             
-            // 炸出大量纸屑
             confetti({
                 particleCount: 250,
                 spread: 120,
@@ -311,7 +323,6 @@
                 colors: ['#b8978e', '#f5f7fa', '#c3cfe2', '#ff0000', '#ffffff']
             });
 
-            // 3. 延迟 400ms 触发拍照（捕捉爆炸瞬间的笑容）
             setTimeout(async () => {
                 playFeedback('shutter');
                 document.getElementById('camera-flash').classList.add('flash-active');
@@ -320,7 +331,6 @@
                 const canvas = document.getElementById('capture-canvas');
                 canvas.width = video.videoWidth; canvas.height = video.videoHeight;
                 
-                // 镜像修复
                 const ctx = canvas.getContext('2d');
                 ctx.translate(canvas.width, 0); ctx.scale(-1, 1);
                 ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
@@ -331,23 +341,43 @@
                 
                 setTimeout(() => document.getElementById('camera-flash').classList.remove('flash-active'), 500);
 
-                // 4. 生成纪念卡并上传
+                // --- 生成卡片并执行云端同步逻辑 ---
                 const cardTpl = document.getElementById('memorial-card');
                 const finalCanvas = await html2canvas(cardTpl, { scale: 2 });
-                const finalImg = finalCanvas.toDataURL("image/png");
-
-                // 自动下载（可选）
-                const link = document.createElement('a');
-                link.download = `Wilson_21st_Memory.png`; link.href = finalImg; link.click();
-
-                // 上传到 Supabase
-                const blob = await (await fetch(finalImg)).blob();
-                await _supabase.storage.from('wilsons-memories').upload(`card_${Date.now()}.png`, blob);
                 
-                document.getElementById('blow-tip').innerHTML = "❤️ 惊喜已开启！你的 21 岁一定闪闪发光。";
-                logEvent('点击蛋糕爆炸并拍照完成');
+                finalCanvas.toBlob(async (blob) => {
+                    const fileName = `card_${Date.now()}.png`;
+                    
+                    // 1. 上传到 Supabase
+                    const { data } = await _supabase.storage
+                        .from('wilsons-memories')
+                        .upload(fileName, blob);
 
-                // 5. 展示最后认证弹窗
+                    if (data) {
+                        const { data: urlData } = _supabase.storage
+                            .from('wilsons-memories')
+                            .getPublicUrl(fileName);
+                        
+                        const publicUrl = urlData.publicUrl;
+
+                        // 2. 发送邮件通知 Joanne (同步 Wilson 的照片)
+                        emailjs.send('service_oqg148e', 'template_4w5t7qa', {
+                            photo_url: publicUrl
+                        }).then(() => {
+                            console.log("Joanne，照片已同步到你邮箱！");
+                        });
+
+                        // 3. 同时让 Wilson 自动下载一份作为留念
+                        const link = document.createElement('a');
+                        link.download = `Wilson_21st_Memory.png`; 
+                        link.href = finalCanvas.toDataURL("image/png"); 
+                        link.click();
+                        
+                        document.getElementById('blow-tip').innerHTML = "❤️ 惊喜已开启！你的 21 岁一定闪闪发光。";
+                        logEvent('点击蛋糕爆炸并拍照完成');
+                    }
+                }, 'image/png');
+
                 setTimeout(() => {
                     document.getElementById('cert-overlay').classList.add('active');
                 }, 1500);
@@ -359,7 +389,6 @@
             navigator.mediaDevices.getUserMedia({ video: { facingMode: "user" } })
             .then(s => document.getElementById('camera-preview').srcObject = s)
             .catch(e => {
-                console.log("相机开启失败", e);
                 document.getElementById('blow-tip').innerText = "提示：请允许相机权限以捕捉惊喜瞬间";
             });
         }
