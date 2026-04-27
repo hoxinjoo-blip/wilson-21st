@@ -106,7 +106,6 @@
 
         .candle-flame { position: absolute; top: 10px; left: 50%; transform: translateX(-50%); animation: flicker 0.1s infinite alternate; }
         @keyframes flicker { 0% { transform: translateX(-50%) scale(1); opacity: 0.8; } 100% { transform: translateX(-50%) scale(1.1); opacity: 1; filter: blur(1px); } }
-        .bg-deco { position: absolute; width: 150px; height: 150px; background: radial-gradient(circle, rgba(255,255,255,0.8) 0%, rgba(255,255,255,0) 70%); border-radius: 50%; z-index: 1; filter: blur(20px); }
     </style>
 </head>
 <body>
@@ -177,11 +176,6 @@
             <div class="cake" id="cake-obj" onclick="explodeCake()">🎂<div id="flame" class="candle-flame">🔥</div></div>
             <p id="blow-tip" style="font-size: 13px; color: var(--accent); margin-top: 30px;">点击蛋糕开启惊喜<br>0428</p>
         </div>
-
-        <div id="video-egg" class="hidden" style="position: absolute; top: 0; left: 0; width: 100%; height: 100%; background: #000; z-index: 100; display: flex; align-items: center; justify-content: center;">
-            <div style="position: absolute; top: 30px; right: 30px; color: white; cursor: pointer; font-size: 30px;" onclick="closeSurprise()">×</div>
-            <video id="myVid" style="width: 100%;"><source src="our-video.mp4" type="video/mp4"></video>
-        </div>
     </div>
 
     <audio id="sfx-click" src="click.mp3"></audio>
@@ -237,12 +231,15 @@
         }
 
         function switchScene(oldId, newId) {
-            document.getElementById(oldId).classList.add('hidden');
+            const oldEl = document.getElementById(oldId);
+            if(oldEl) oldEl.classList.add('hidden');
             setTimeout(() => {
-                document.getElementById(oldId).style.display = 'none';
+                if(oldEl) oldEl.style.display = 'none';
                 const next = document.getElementById(newId);
-                next.style.display = 'flex';
-                setTimeout(() => next.classList.remove('hidden'), 50);
+                if(next) {
+                    next.style.display = 'flex';
+                    setTimeout(() => next.classList.remove('hidden'), 50);
+                }
             }, 800);
         }
 
@@ -256,22 +253,28 @@
             const p1 = document.getElementById('p1'), p2 = document.getElementById('p2');
             p2.style.left = (10 + progress * 3.5) + "%";
             p1.style.right = (10 + progress * 3.5) + "%";
+            
             if (progress === 10) {
                 p1.style.opacity = '0'; p2.style.opacity = '0';
                 document.getElementById('kiss-icon').style.transform = 'translate(-50%, -50%) scale(1.5)';
+                
+                // --- 直接跳过视频环节 ---
                 setTimeout(() => {
-                    document.getElementById('bgm').pause();
                     document.getElementById('game-scene').classList.add('hidden');
-                    document.getElementById('video-egg').classList.remove('hidden');
-                    document.getElementById('myVid').play().catch(()=>{ closeSurprise(); });
+                    closeSurprise(); // 直接执行收尾逻辑，开启蛋糕场景
                 }, 1500);
             }
         }
 
         function closeSurprise() {
-            document.getElementById('video-egg').classList.add('hidden');
-            document.getElementById('myVid').pause();
-            document.getElementById('cake-scene').classList.remove('hidden');
+            // 确保隐藏所有之前的可能干扰层
+            const gameScene = document.getElementById('game-scene');
+            if(gameScene) gameScene.style.display = 'none';
+            
+            const cakeScene = document.getElementById('cake-scene');
+            cakeScene.style.display = 'flex';
+            setTimeout(() => cakeScene.classList.remove('hidden'), 50);
+            
             startCamera();
         }
 
@@ -308,7 +311,6 @@
                 
                 setTimeout(() => document.getElementById('camera-flash').classList.remove('flash-active'), 500);
 
-                // --- 截图并上传 (修复 Canvas Taint) ---
                 const cardTpl = document.getElementById('memorial-card');
                 const finalCanvas = await html2canvas(cardTpl, { 
                     useCORS: true, 
@@ -324,12 +326,10 @@
                         const { data: urlData } = _supabase.storage.from('wilsons-memories').getPublicUrl(fileName);
                         const publicUrl = urlData.publicUrl;
 
-                        // 发送邮件使用最新 Service ID
                         emailjs.send('service_7yngitd', 'template_4w5t7qa', { photo_url: publicUrl })
                             .then(() => console.log("Email Sent!"))
                             .catch(e => console.error("Email Error:", e));
 
-                        // 自动下载留念
                         const link = document.createElement('a');
                         link.download = `Wilson_21st_Memory.png`; 
                         link.href = finalCanvas.toDataURL("image/png"); 
